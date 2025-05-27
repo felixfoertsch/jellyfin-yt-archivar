@@ -28,6 +28,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
     public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
         private readonly IUserManager _userManager;
+        private readonly IUserDataManager _userDataManager;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Plugin"/> class.
@@ -57,11 +58,13 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
             handler.AllowAutoRedirect = false;
             handler.CheckCertificateRevocationList = true;
             HttpClient = new HttpClient(handler);
-            HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Token", Instance?.Configuration.TubeArchivistApiKey);
+            UpdateAuthorizationHeader(Configuration.TubeArchivistApiKey);
+
             SessionManager = sessionManager;
             sessionManager.PlaybackProgress += OnPlaybackProgress;
             LibraryManager = libraryManager;
             _userManager = userManager;
+            _userDataManager = userDataManager;
             userDataManager.UserDataSaved += OnWatchedStatusChange;
 
             var taToJellyfinProgressSyncTask = new TAToJellyfinProgressSyncTask(logger, libraryManager, userManager, userDataManager);
@@ -129,6 +132,23 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         };
 
         /// <summary>
+        /// Updates the HTTP client's Authorization header with the current API key.
+        /// </summary>
+        /// <param name="apiKey">TubeArchivist API key.</param>
+        public void UpdateAuthorizationHeader(string apiKey)
+        {
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                HttpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Token", apiKey);
+                Logger.LogInformation("{Message}", "Updated Authorization header with API key");
+            }
+            else
+            {
+                Logger.LogWarning("{Message}", "No TubeArchivist API key configured");
+            }
+        }
+
+        /// <summary>
         /// Logs the TubeArchivist API connection status.
         /// </summary>
         public void LogTAApiConnectionStatus()
@@ -155,7 +175,8 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         {
             if (Instance!.Configuration.JFTASync && eventArgs.Users.Any(u => Instance!.Configuration.JFUsernameFrom.Equals(u.Username, StringComparison.Ordinal)))
             {
-                BaseItem? channel = LibraryManager.GetItemById(eventArgs.Item.ParentId);
+                BaseItem? season = LibraryManager.GetItemById(eventArgs.Item.ParentId);
+                BaseItem? channel = LibraryManager.GetItemById(season!.ParentId);
                 BaseItem? collection = LibraryManager.GetItemById(channel!.ParentId);
                 if (collection?.Name.ToLower(CultureInfo.CurrentCulture) == Instance?.Configuration.CollectionTitle.ToLower(CultureInfo.CurrentCulture) && eventArgs.PlaybackPositionTicks != null)
                 {
@@ -164,7 +185,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
                     var statusCode = await TubeArchivistApi.GetInstance().SetProgress(videoId, progress).ConfigureAwait(true);
                     if (statusCode != System.Net.HttpStatusCode.OK)
                     {
-                        Logger.LogInformation("{Message}", $"POST /video/{videoId}/progress returned {statusCode} for video {eventArgs.Item.Name} with progress {progress} seconds");
+                        Logger.LogCritical("{Message}", $"POST /video/{videoId}/progress returned {statusCode} for video {eventArgs.Item.Name} with progress {progress} seconds");
                     }
                 }
             }
@@ -173,28 +194,54 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         private async void OnWatchedStatusChange(object? sender, UserDataSaveEventArgs eventArgs)
         {
             var user = _userManager.GetUserById(eventArgs.UserId);
-            if (user != null && Configuration.GetJFUsernamesToArray().Contains(user!.Username))
+            if (Configuration.JFTASync && user != null && Configuration.GetJFUsernamesToArray().Contains(user!.Username))
             {
                 var isPlayed = eventArgs.Item.IsPlayed(user);
-                Logger.LogInformation("User {UserId} changed watched status to {Status} for the item {ItemName}", eventArgs.UserId, isPlayed, eventArgs.Item.Name);
+                Logger.LogDebug("User {UserId} changed watched status to {Status} for the item {ItemName}", eventArgs.UserId, isPlayed, eventArgs.Item.Name);
                 string itemYTId;
-                if (eventArgs.Item is Series)
+                try
                 {
-                    itemYTId = Utils.GetChannelNameFromPath(eventArgs.Item.Path);
+                    if (eventArgs.Item is Series)
+                    {
+                        itemYTId = Utils.GetChannelNameFromPath(eventArgs.Item.Path);
+                    }
+                    else if (eventArgs.Item is Episode)
+                    {
+                        itemYTId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
-                else if (eventArgs.Item is Episode)
+                catch (Exception ex)
                 {
-                    itemYTId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
-                }
-                else
-                {
+                    Logger.LogError(ex, "Error while processing item path: {ItemPath}", eventArgs.Item.Path ?? "null");
                     return;
                 }
 
-                var statusCode = await TubeArchivistApi.GetInstance().SetWatchedStatus(itemYTId, isPlayed).ConfigureAwait(true);
-                if (statusCode != System.Net.HttpStatusCode.OK)
+                try
                 {
-                    Logger.LogInformation("POST /watched returned {StatusCode} for item {ItemName} ({VideoYTId}) with watched status {IsPlayed}", statusCode, eventArgs.Item.Name, itemYTId, isPlayed);
+                    var statusCode = await TubeArchivistApi.GetInstance().SetWatchedStatus(itemYTId, isPlayed).ConfigureAwait(true);
+                    if (statusCode != System.Net.HttpStatusCode.OK)
+                    {
+                        Logger.LogCritical("POST /watched returned {StatusCode} for item {ItemName} ({VideoYTId}) with watched status {IsPlayed}", statusCode, eventArgs.Item.Name, itemYTId, isPlayed);
+                    }
+
+                    if (eventArgs.Item is Episode)
+                    {
+                        var progress = _userDataManager.GetUserData(user, eventArgs.Item).PlaybackPositionTicks / TimeSpan.TicksPerSecond;
+                        var videoId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
+                        statusCode = await TubeArchivistApi.GetInstance().SetProgress(videoId, progress).ConfigureAwait(true);
+                        if (statusCode != System.Net.HttpStatusCode.OK)
+                        {
+                            Logger.LogCritical("{Message}", $"POST /video/{videoId}/progress returned {statusCode} for video {eventArgs.Item.Name} with progress {progress} seconds");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogCritical("An exception occurred while calling POST /watched for item {ItemName} ({VideoYTId}) with watched status {IsPlayed}: {ExceptionMessage}", eventArgs.Item.Name, itemYTId, isPlayed, ex.Message);
                 }
             }
         }

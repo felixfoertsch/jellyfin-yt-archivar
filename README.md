@@ -6,7 +6,12 @@
 </p>
 
 > [!IMPORTANT]
-> Jellyfin 10.9.1 has been finally released and since starting with the version 1.3.0 the plugin supports only the latest Jellyfin release, in order to continue using this plugin with all the latest features you will need to upgrade your Jellyfin installation.
+> Jellyfin release cycle has changed in the past few months and now it is shorter than before. The plugin supports only the latest Jellyfin release, in order to continue using this plugin with all the latest features you will need to upgrade your Jellyfin installation.
+> The same rule applies to TubeArchivist: the plugin is only guaranteed to work with the latest TubeArchivist version.
+
+> [!WARNING]
+> Jellyfin 10.10 introduced a bug that prevents the plugin to correctly create Season folders by year. The bug has been finally solved on the Jellyfin codebase, but, until the next minor release, a manual build of the Jellyfin branch `release-10.10.z` is required in order to get the fix running.<br>
+> This is not a plugin bug, any issue opened about this bug will be immediately closed!
 
 ## About
 
@@ -49,6 +54,7 @@ Once installed, you have to configure the following parameters in the plugin con
     <li>TubeArchivist instance address</li>
     <li>TubeArchivist API key</li>
     <li>Overviews length (channels and videos descriptions)</li>
+    <li>Playback synchronization settings discussed in the <a href="#playback-synchronization">Playback synchronization</a> paragraph</li>
 </ul>
 
 ![Plugin configuration](https://github.com/tubearchivist/tubearchivist-jf-plugin/assets/31162436/d34464ea-ddfb-44b3-9d3e-5d5974956c58)
@@ -64,6 +70,26 @@ _NOTE: If you are using Docker containers, it is important to mount the TubeArch
 
 4. Scrolling down, uncheck all metadata and image providers except `TubeArchivist`. (You won't find TubeArchivist in seasons providers, so just disable everything there)
 5. Save and come back to Home, you will see the newly added library. Jellyfin will have executed the metadata fetching for you after the collection creation and then you will see the metadata and the images of channels and videos
+
+
+## Playback synchronization
+<p>Starting from v1.3.1 this plugin offers playback progress and watched status bidirectional synchronization, but you can choose to enable only a one way synchronization (Jellyfin->TubeArchivist or TubeArchivist->Jellyfin) too.</p>
+
+### Jellyfin->TubeArchivist synchronization
+<p>This kind of synchronization is done listening for progress and watched status changes while playing the videos for the specified users.<br>Furthermore, there is a task that runs at Jellyfin startup to synchronize the whole library.</p>
+<p>In the plugin configuration you will find these settings:</p>
+
+![JF->TA playback synchronization settings](https://github.com/user-attachments/assets/dc6be82f-e685-4896-a502-317681c47fc7)
+<p>In the text field you can specify one Jellyfin username to synchronize data of to TubeArchivist.</p>
+
+### TubeArchivist->Jellyfin synchronization
+<p>This kind of synchronization is done using a Jellyfin scheduled task that regularly synchronizes data from TubeArchivist API to Jellyfin.</p>
+<p>In the plugin configuration you will find these settings:</p>
+
+![TA->JF playback synchronization settings](https://github.com/user-attachments/assets/1b4c33af-834f-45b3-9057-71830e7c8b4f)
+<p>In the first text field you can specify one or more Jellyfin usernames to update data for.<br>
+In the second field you can specify the interval in seconds the task should run at, so that you can choose according to your system requirements. The lower is the interval the higher will be the resources consuption on your system.</p>
+
 
 ## Build
 
