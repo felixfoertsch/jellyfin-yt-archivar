@@ -72,11 +72,13 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                     return;
                 }
 
-                var collectionItem = _libraryManager.GetItemList(new InternalItemsQuery
+                var items = _libraryManager.GetItemList(new InternalItemsQuery
                 {
                     Name = Plugin.Instance?.Configuration.CollectionTitle,
                     IncludeItemTypes = new[] { BaseItemKind.CollectionFolder }
-                }).FirstOrDefault();
+                });
+
+                var collectionItem = items.Count > 0 ? items[0] : null;
 
                 if (collectionItem == null)
                 {
@@ -90,7 +92,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                     {
                         IncludeItemTypes = new[] { BaseItemKind.Series }
                     });
-                    _logger.LogInformation("Analyzing collection {Id} with name {Name}", collectionItem.Id, collectionItem.Name);
+                    _logger.LogDebug("Analyzing collection {Id} with name {Name}", collectionItem.Id, collectionItem.Name);
                     _logger.LogDebug("Found {Message} channels", channels.Count);
 
                     foreach (Series channel in channels)
@@ -114,7 +116,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                     }
                 }
 
-                _logger.LogInformation("Found a total of {VideosCount} videos", videosCount);
+                _logger.LogDebug("Found a total of {VideosCount} videos", videosCount);
 
                 var processedVideosCount = 0;
                 if (collectionItem == null)
@@ -151,12 +153,13 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                             foreach (Episode video in videos)
                             {
                                 var videoYTId = Utils.GetVideoNameFromPath(video.Path);
-                                _logger.LogInformation("{VideoYtId}", videoYTId);
+                                _logger.LogDebug("{VideoYtId}", videoYTId);
                                 HttpStatusCode statusCode;
+                                var userItemData = _userDataManager.GetUserData(user, channel);
 
-                                if (!isChannelCheckedForWatched && channel.IsPlayed(user))
+                                if (!isChannelCheckedForWatched && channel.IsPlayed(user, userItemData))
                                 {
-                                    var isChannelPlayed = channel.IsPlayed(user);
+                                    var isChannelPlayed = channel.IsPlayed(user, userItemData);
                                     statusCode = await taApi.SetWatchedStatus(channelYTId, isChannelPlayed).ConfigureAwait(true);
                                     if (statusCode != System.Net.HttpStatusCode.OK)
                                     {
@@ -172,21 +175,24 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
 
                                 if (!isChannelWatched)
                                 {
-                                    var isVideoPlayed = video.IsPlayed(user);
+                                    var isVideoPlayed = video.IsPlayed(user, userItemData);
                                     statusCode = await taApi.SetWatchedStatus(videoYTId, isVideoPlayed).ConfigureAwait(true);
                                     if (statusCode != System.Net.HttpStatusCode.OK)
                                     {
                                         _logger.LogCritical("{Message}", $"POST /watched returned {statusCode} for video {video.Name} ({videoYTId}) with wacthed status {isVideoPlayed}");
                                     }
 
-                                    _logger.LogInformation("{Message}", isVideoPlayed);
+                                    _logger.LogDebug("{Message}", isVideoPlayed);
                                     if (!isVideoPlayed)
                                     {
-                                        var playbackProgress = _userDataManager.GetUserData(user, video).PlaybackPositionTicks / TimeSpan.TicksPerSecond;
-                                        statusCode = await taApi.SetProgress(videoYTId, playbackProgress).ConfigureAwait(true);
-                                        if (statusCode != System.Net.HttpStatusCode.OK)
+                                        var playbackProgress = _userDataManager.GetUserData(user, video)?.PlaybackPositionTicks / TimeSpan.TicksPerSecond;
+                                        if (playbackProgress != null)
                                         {
-                                            _logger.LogCritical("{Message}", $"POST /video/{videoYTId}/progress returned {statusCode} for video {video.Name} with progress {progress} seconds");
+                                            statusCode = await taApi.SetProgress(videoYTId, playbackProgress.Value).ConfigureAwait(true);
+                                            if (statusCode != System.Net.HttpStatusCode.OK)
+                                            {
+                                                _logger.LogCritical("{Message}", $"POST /video/{videoYTId}/progress returned {statusCode} for video {video.Name} with progress {progress} seconds");
+                                            }
                                         }
                                     }
                                 }
@@ -215,7 +221,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
             [
                 new TaskTriggerInfo
                 {
-                    Type = TaskTriggerInfo.TriggerStartup,
+                    Type = TaskTriggerInfoType.StartupTrigger,
                 },
             ];
         }
