@@ -20,7 +20,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
     /// <summary>
     /// Task to sync Jellyfin playback progresses to TubeArchivist.
     /// </summary>
-    public class JFToTubearchivistProgressSyncTask : IScheduledTask
+    public class JFToTubeArchivistProgressSyncTask : IScheduledTask
     {
         private readonly ILogger<Plugin> _logger;
         private readonly ILibraryManager _libraryManager;
@@ -28,13 +28,13 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
         private readonly IUserDataManager _userDataManager;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="JFToTubearchivistProgressSyncTask"/> class.
+        /// Initializes a new instance of the <see cref="JFToTubeArchivistProgressSyncTask"/> class.
         /// </summary>
         /// <param name="logger">Logger.</param>
         /// <param name="libraryManager">Library manager.</param>
         /// <param name="userManager">User manager.</param>
         /// <param name="userDataManager">User data manager.</param>
-        public JFToTubearchivistProgressSyncTask(ILogger<Plugin> logger, ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager)
+        public JFToTubeArchivistProgressSyncTask(ILogger<Plugin> logger, ILibraryManager libraryManager, IUserManager userManager, IUserDataManager userDataManager)
         {
             _logger = logger;
             _libraryManager = libraryManager;
@@ -58,7 +58,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             progress.Report(0);
-            if (Plugin.Instance!.Configuration.JFTASync)
+            if (Plugin.Instance!.Configuration.JFTAProgressSync)
             {
                 var start = DateTime.Now;
                 _logger.LogInformation("Starting Jellyfin->TubeArchivist playback progresses synchronization.");
@@ -153,13 +153,13 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                             foreach (Episode video in videos)
                             {
                                 var videoYTId = Utils.GetVideoNameFromPath(video.Path);
-                                _logger.LogDebug("{VideoYtId}", videoYTId);
+                                _logger.LogDebug("Current video extracted YouTube id: {VideoYtId}", videoYTId);
                                 HttpStatusCode statusCode;
-                                var userItemData = _userDataManager.GetUserData(user, channel);
+                                var channelItemData = _userDataManager.GetUserData(user, channel);
 
-                                if (!isChannelCheckedForWatched && channel.IsPlayed(user, userItemData))
+                                if (!isChannelCheckedForWatched && channel.IsPlayed(user, channelItemData))
                                 {
-                                    var isChannelPlayed = channel.IsPlayed(user, userItemData);
+                                    var isChannelPlayed = channel.IsPlayed(user, channelItemData);
                                     statusCode = await taApi.SetWatchedStatus(channelYTId, isChannelPlayed).ConfigureAwait(true);
                                     if (statusCode != System.Net.HttpStatusCode.OK)
                                     {
@@ -173,13 +173,26 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                                     isChannelCheckedForWatched = true;
                                 }
 
+                                var videoItemData = _userDataManager.GetUserData(user, video);
                                 if (!isChannelWatched)
                                 {
-                                    var isVideoPlayed = video.IsPlayed(user, userItemData);
-                                    statusCode = await taApi.SetWatchedStatus(videoYTId, isVideoPlayed).ConfigureAwait(true);
-                                    if (statusCode != System.Net.HttpStatusCode.OK)
+                                    var isVideoPlayed = video.IsPlayed(user, videoItemData);
+                                    var taVideo = await taApi.GetVideo(videoYTId).ConfigureAwait(true);
+                                    if (taVideo != null)
                                     {
-                                        _logger.LogCritical("{Message}", $"POST /watched returned {statusCode} for video {video.Name} ({videoYTId}) with wacthed status {isVideoPlayed}");
+                                        var isTAVideoPlayed = taVideo?.Player.IsWatched ?? false;
+                                        if (isTAVideoPlayed != isVideoPlayed)
+                                        {
+                                            statusCode = await taApi.SetWatchedStatus(videoYTId, isVideoPlayed).ConfigureAwait(true);
+                                            if (statusCode != System.Net.HttpStatusCode.OK)
+                                            {
+                                                _logger.LogCritical("{Message}", $"POST /watched returned {statusCode} for video {video.Name} ({videoYTId}) with wacthed status {isVideoPlayed}");
+                                            }
+                                            else
+                                            {
+                                                _logger.LogInformation("Video {VideoId} watch status marked as {Status} in TubeArchivist", videoYTId, isVideoPlayed);
+                                            }
+                                        }
                                     }
 
                                     _logger.LogDebug("{Message}", isVideoPlayed);
@@ -188,10 +201,17 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Tasks
                                         var playbackProgress = _userDataManager.GetUserData(user, video)?.PlaybackPositionTicks / TimeSpan.TicksPerSecond;
                                         if (playbackProgress != null)
                                         {
-                                            statusCode = await taApi.SetProgress(videoYTId, playbackProgress.Value).ConfigureAwait(true);
-                                            if (statusCode != System.Net.HttpStatusCode.OK)
+                                            try
                                             {
-                                                _logger.LogCritical("{Message}", $"POST /video/{videoYTId}/progress returned {statusCode} for video {video.Name} with progress {progress} seconds");
+                                                statusCode = await taApi.SetProgress(videoYTId, playbackProgress.Value).ConfigureAwait(true);
+                                                if (statusCode != System.Net.HttpStatusCode.OK)
+                                                {
+                                                    _logger.LogCritical("{Message}", $"POST /video/{videoYTId}/progress returned {statusCode} for video {video.Name} with progress {progress} seconds");
+                                                }
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                _logger.LogCritical("An exception occurred while calling POST /video/{VideoId}/progress for for video {VideoName} with progress {Progress} seconds: {ExceptionMessage}", videoYTId, videoYTId, playbackProgress.Value, ex.Message);
                                             }
                                         }
                                     }

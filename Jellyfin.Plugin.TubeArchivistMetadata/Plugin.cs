@@ -14,6 +14,7 @@ using MediaBrowser.Common.Plugins;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Controller.Session;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
@@ -40,6 +41,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         /// <param name="libraryManager">Instance of the <see cref="ILibraryManager"/> interface.</param>
         /// <param name="userManager">Instance of the <see cref="IUserManager"/> interface.</param>
         /// <param name="userDataManager">Instance of the <see cref="IUserDataManager"/> interface.</param>
+        /// <param name="playlistManager">Instance of the <see cref="IPlaylistManager"/> interface.</param>
         public Plugin(
             IApplicationPaths applicationPaths,
             IXmlSerializer xmlSerializer,
@@ -47,7 +49,8 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
             ISessionManager sessionManager,
             ILibraryManager libraryManager,
             IUserManager userManager,
-            IUserDataManager userDataManager)
+            IUserDataManager userDataManager,
+            IPlaylistManager playlistManager)
             : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
@@ -159,20 +162,27 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
                 return;
             }
 
-            if (Instance!.Configuration.JFTASync && eventArgs.Users.Any(u => Instance!.Configuration.JFUsernameFrom.Equals(u.Username, StringComparison.Ordinal)))
+            var topParent = eventArgs.Item.GetTopParent();
+            if (
+                Instance!.Configuration.JFTAProgressSync &&
+                eventArgs.Users.Any(u => Instance!.Configuration.JFUsernameFrom.Equals(u.Username, StringComparison.Ordinal)) &&
+                eventArgs.PlaybackPositionTicks.HasValue &&
+                string.Equals(topParent?.Name, Instance?.Configuration.CollectionTitle, StringComparison.OrdinalIgnoreCase)
+            )
             {
-                BaseItem? season = LibraryManager.GetItemById(eventArgs.Item.ParentId);
-                BaseItem? channel = LibraryManager.GetItemById(season!.ParentId);
-                BaseItem? collection = LibraryManager.GetItemById(channel!.ParentId);
-                if (collection?.Name.ToLower(CultureInfo.CurrentCulture) == Instance?.Configuration.CollectionTitle.ToLower(CultureInfo.CurrentCulture) && eventArgs.PlaybackPositionTicks != null)
+                long progress = (long)eventArgs.PlaybackPositionTicks / TimeSpan.TicksPerSecond;
+                var videoId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
+                try
                 {
-                    long progress = (long)eventArgs.PlaybackPositionTicks / TimeSpan.TicksPerSecond;
-                    var videoId = Utils.GetVideoNameFromPath(eventArgs.Item.Path);
                     var statusCode = await TubeArchivistApi.GetInstance().SetProgress(videoId, progress).ConfigureAwait(true);
                     if (statusCode != System.Net.HttpStatusCode.OK)
                     {
                         Logger.LogCritical("{Message}", $"POST /video/{videoId}/progress returned {statusCode} for video {eventArgs.Item.Name} with progress {progress} seconds");
                     }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogCritical("An exception occurred while calling POST /video/{VideoId}/progress for for video {VideoName} with progress {Progress} seconds: {ExceptionMessage}", videoId, eventArgs.Item.Name, progress, ex.Message);
                 }
             }
         }
@@ -185,16 +195,26 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
                 return;
             }
 
+            var topParent = eventArgs.Item.GetTopParent();
             var user = _userManager.GetUserById(eventArgs.UserId);
-            if (user == null)
+            if (
+                Configuration.JFTAProgressSync
+                && user == null
+                && string.Equals(topParent?.Name, Instance?.Configuration.CollectionTitle, StringComparison.OrdinalIgnoreCase)
+            )
             {
                 Logger.LogError("OnWatchedStatusChange callback called without user id for item {ItemName}", eventArgs.Item.Name);
                 return;
             }
 
-            var userItemData = _userDataManager.GetUserData(user, eventArgs.Item);
-            if (Configuration.JFTASync && user != null && Configuration.GetJFUsernamesToArray().Contains(user!.Username))
+            if (
+                Configuration.JFTAProgressSync
+                && user != null
+                && string.Equals(Configuration.JFUsernameFrom, user!.Username, StringComparison.Ordinal)
+                && string.Equals(topParent?.Name, Instance?.Configuration.CollectionTitle, StringComparison.OrdinalIgnoreCase)
+            )
             {
+                var userItemData = _userDataManager.GetUserData(user, eventArgs.Item);
                 var isPlayed = eventArgs.Item.IsPlayed(user, userItemData);
                 Logger.LogDebug("User {UserId} changed watched status to {Status} for the item {ItemName}", eventArgs.UserId, isPlayed, eventArgs.Item.Name);
                 string itemYTId;
