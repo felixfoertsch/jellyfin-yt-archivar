@@ -1,5 +1,9 @@
 name: TubeArchivistMetadata
 
+permissions:
+  code: read
+  releases: write
+
 on:
   push:
     branches:
@@ -124,12 +128,12 @@ jobs:
 
       - name: Create Gitea release
         env:
-          GITEA_SERVER_TOKEN: ${{ secrets.GITEA_SERVER_TOKEN }}
+          GITEA_SERVER_TOKEN: ${{ secrets.GITEA_TOKEN }}
         run: |
           set -euo pipefail
 
           if [ -z "${GITEA_SERVER_TOKEN:-}" ]; then
-            echo "Missing GITEA_SERVER_TOKEN secret" >&2
+            echo "Missing built-in GITEA_TOKEN" >&2
             exit 1
           fi
 
