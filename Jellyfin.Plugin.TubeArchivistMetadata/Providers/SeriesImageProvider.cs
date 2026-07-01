@@ -45,12 +45,12 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         public string Name => "TubeArchivist";
 
         /// <inheritdoc />
-        public bool Supports(BaseItem item) => item is Series;
+        public bool Supports(BaseItem item) => item is Series && Utils.IsTubeArchivistItem(item);
 
         /// <inheritdoc />
         public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
-            return new[] { ImageType.Primary };
+            return new[] { ImageType.Primary, ImageType.Art, ImageType.Banner, ImageType.Backdrop };
         }
 
         /// <inheritdoc />
@@ -62,10 +62,8 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             var channel = await taApi.GetChannel(channelTAId).ConfigureAwait(true);
             _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting images for channel: {0} ({1})", channel?.Name, channelTAId));
             _logger.LogDebug("{Message}", "Thumb URI: " + channel?.ThumbUrl);
-            _logger.LogDebug("{Message}", "TVArt URI: " + channel?.TvartUrl);
-            _logger.LogDebug("{Message}", "Banner URI: " + channel?.BannerUrl);
 
-            if (channel != null)
+            if (channel != null && Utils.HasImageUrl(channel.ThumbUrl))
             {
                 list.Add(new RemoteImageInfo
                 {
@@ -73,23 +71,32 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                     Type = ImageType.Primary,
                     Url = channel.ThumbUrl
                 });
+            }
+
+            if (channel != null && Utils.HasImageUrl(channel.TvartUrl))
+            {
                 list.Add(new RemoteImageInfo
                 {
                     ProviderName = Name,
                     Type = ImageType.Art,
                     Url = channel.TvartUrl
                 });
-                list.Add(new RemoteImageInfo
-                {
-                    ProviderName = Name,
-                    Type = ImageType.Banner,
-                    Url = channel.BannerUrl
-                });
+
                 list.Add(new RemoteImageInfo
                 {
                     ProviderName = Name,
                     Type = ImageType.Backdrop,
                     Url = channel.TvartUrl
+                });
+            }
+
+            if (channel != null && Utils.HasImageUrl(channel.BannerUrl))
+            {
+                list.Add(new RemoteImageInfo
+                {
+                    ProviderName = Name,
+                    Type = ImageType.Banner,
+                    Url = channel.BannerUrl
                 });
             }
 
@@ -105,6 +112,11 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             }
             else
             {
+                if (!Utils.HasImageUrl(url))
+                {
+                    throw new HttpRequestException("TubeArchivist returned an empty image URL.");
+                }
+
                 return await Plugin.Instance.HttpClient.GetAsync(new Uri(Utils.SanitizeUrl(Plugin.Instance.Configuration.TubeArchivistUrl + url).TrimEnd('/')), cancellationToken).ConfigureAwait(false);
             }
         }

@@ -47,7 +47,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         public string Name => "TubeArchivist";
 
         /// <inheritdoc />
-        public bool Supports(BaseItem item) => item is Episode;
+        public bool Supports(BaseItem item) => item is Episode && Utils.IsTubeArchivistItem(item);
 
         /// <inheritdoc />
         public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
@@ -65,7 +65,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting images for video: {0} ({1})", video?.Title, videoTAId));
             _logger.LogDebug("{Message}", "Thumb URI: " + video?.VidThumbUrl);
 
-            if (video != null)
+            if (video != null && Utils.HasImageUrl(video.VidThumbUrl))
             {
                 list.Add(new RemoteImageInfo
                 {
@@ -87,6 +87,11 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             }
             else
             {
+                if (!Utils.HasImageUrl(url))
+                {
+                    throw new HttpRequestException("TubeArchivist returned an empty image URL.");
+                }
+
                 return await Plugin.Instance.HttpClient.GetAsync(new Uri(Utils.SanitizeUrl(Plugin.Instance.Configuration.TubeArchivistUrl + url).TrimEnd('/')), cancellationToken).ConfigureAwait(false);
             }
         }

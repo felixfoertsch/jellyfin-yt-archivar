@@ -96,7 +96,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
             {
                 Name = Name,
                 SearchProviderName = Constants.ProviderName,
-                ImageUrl = ThumbUrl,
+                ImageUrl = Utils.HasImageUrl(ThumbUrl) ? ThumbUrl : null,
                 ProviderIds = new Dictionary<string, string>() { { Constants.ProviderName, Id } }
             };
         }
@@ -118,14 +118,16 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
                         Constants.ProviderName, Id
                     }
                 },
-                ImageInfos = new[]
-                {
+                ImageInfos = Utils.HasImageUrl(ThumbUrl) ?
+                [
                     new ItemImageInfo
                     {
                         Path = ThumbUrl,
                         Type = ImageType.Primary
                     }
-                },
+
+                ] :
+                [],
                 Tags = this.Tags != null ?
                     this.Tags.ToArray<string>() :
                     []

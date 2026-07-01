@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using MediaBrowser.Controller.Entities;
 
 namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
 {
@@ -123,6 +124,32 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
         public static string GetChannelNameFromPath(string path)
         {
             return path.Split(DetectDirectorySeparator(path)).Last();
+        }
+
+        /// <summary>
+        /// Checks whether the Jellyfin item belongs to the configured TubeArchivist collection.
+        /// </summary>
+        /// <param name="item">Jellyfin item.</param>
+        /// <returns>True when the item belongs to the configured TubeArchivist collection.</returns>
+        public static bool IsTubeArchivistItem(BaseItem item)
+        {
+            if (Plugin.Instance == null)
+            {
+                return false;
+            }
+
+            var topParent = item.GetTopParent();
+            return string.Equals(topParent?.Name, Plugin.Instance.Configuration.CollectionTitle, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Checks whether a TubeArchivist image URL can be fetched safely.
+        /// </summary>
+        /// <param name="url">Image URL returned by TubeArchivist.</param>
+        /// <returns>True when the image URL is non-empty.</returns>
+        public static bool HasImageUrl(string? url)
+        {
+            return !string.IsNullOrWhiteSpace(url);
         }
 
         private static char DetectDirectorySeparator(string path)
