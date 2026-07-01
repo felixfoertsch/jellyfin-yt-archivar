@@ -9,6 +9,14 @@
         "imageUrl": "https://raw.githubusercontent.com/tubearchivist/tubearchivist-jf-plugin/master/images/logo.png",
         "versions": [
             {
+                "version": "1.4.5.0",
+                "changelog": "Limit providers to TubeArchivist paths, skip empty image URLs, and fix playlist sync intervals\n",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://git.felixfoertsch.de/felixfoertsch/tubearchivist-jf-plugin/releases/download/v1.4.5/tubearchivistmetadata_1.4.5.0.zip",
+                "checksum": "dad305a75a6a07f5d8185a6e8340cbbd",
+                "timestamp": "2026-07-01T06:20:00Z"
+            },
+            {
                 "version": "1.4.4.0",
                 "changelog": "Handle TubeArchivist playlists pagination\n",
                 "targetAbi": "10.11.0.0",

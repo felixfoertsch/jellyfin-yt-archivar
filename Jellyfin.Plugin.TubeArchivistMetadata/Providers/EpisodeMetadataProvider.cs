@@ -50,6 +50,11 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         public async Task<MetadataResult<Episode>> GetMetadata(EpisodeInfo info, CancellationToken cancellationToken)
         {
             var result = new MetadataResult<Episode>();
+            if (string.IsNullOrWhiteSpace(info.Path))
+            {
+                return result;
+            }
+
             var taApi = TubeArchivistApi.GetInstance();
             var videoTAId = Utils.GetVideoNameFromPath(info.Path);
             var video = await taApi.GetVideo(videoTAId).ConfigureAwait(true);
@@ -79,6 +84,10 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(EpisodeInfo searchInfo, CancellationToken cancellationToken)
         {
             var results = new List<RemoteSearchResult>();
+            if (string.IsNullOrWhiteSpace(searchInfo.Path))
+            {
+                return results;
+            }
 
             var taApi = TubeArchivistApi.GetInstance();
             var videoTAId = Utils.GetVideoNameFromPath(searchInfo.Path);

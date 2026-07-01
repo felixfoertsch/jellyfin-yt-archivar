@@ -109,7 +109,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
                 Name = Title,
                 SearchProviderName = Constants.ProviderName,
                 ProductionYear = Published.Year,
-                ImageUrl = VidThumbUrl,
+                ImageUrl = Utils.HasImageUrl(VidThumbUrl) ? VidThumbUrl : null,
                 PremiereDate = Published,
                 ProviderIds = new Dictionary<string, string>() { { Constants.ProviderName, YoutubeId } }
             };
@@ -142,14 +142,16 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
                         Constants.ProviderName, YoutubeId
                     }
                 },
-                ImageInfos = new[]
-                {
+                ImageInfos = Utils.HasImageUrl(VidThumbUrl) ?
+                [
                     new ItemImageInfo
                     {
                         Path = VidThumbUrl,
                         Type = ImageType.Primary
                     }
-                },
+
+                ] :
+                [],
                 Tags = this.Tags.ToArray<string>()
             };
         }
