@@ -57,12 +57,6 @@ jobs:
           grep -F "\"checksum\": \"$PLUGIN_CHECKSUM\"" manifest.json >/dev/null
           grep -F "/releases/download/$GITHUB_REF_NAME/$(basename "$PLUGIN_ARTIFACT")" manifest.json >/dev/null
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tubearchivistmetadata-${{ env.PLUGIN_VERSION }}
-          path: ${{ env.PLUGIN_ARTIFACT }}
-
   release:
     runs-on: ubuntu-latest
     name: Release
