@@ -6,14 +6,14 @@
         "description": "TubeArchivistMetadata is a plugin that automatically manages metadata for videos downloaded with TubeArchivist from YouTube.\n",
         "owner": "DarkFighterLuke",
         "overview": "Metadata for your TubeArchivist library on Jellyfin",
-        "imageUrl": "https://raw.githubusercontent.com/tubearchivist/tubearchivist-jf-plugin/master/images/logo.png",
+        "imageUrl": "https://git.felixfoertsch.de/felixfoertsch/tubearchivist-jf-plugin/raw/branch/main/images/logo.png",
         "versions": [
             {
                 "version": "1.4.5.0",
                 "changelog": "Limit providers to TubeArchivist paths, skip empty image URLs, and fix playlist sync intervals\n",
                 "targetAbi": "10.11.0.0",
                 "sourceUrl": "https://git.felixfoertsch.de/felixfoertsch/tubearchivist-jf-plugin/releases/download/v1.4.5/tubearchivistmetadata_1.4.5.0.zip",
-                "checksum": "dad305a75a6a07f5d8185a6e8340cbbd",
+                "checksum": "2c0632e30631925b7f42b30dc567819f",
                 "timestamp": "2026-07-01T06:20:00Z"
             },
             {
