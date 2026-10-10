@@ -16,7 +16,8 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: linux-builder
+    container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
     name: Build
 
     steps:
@@ -62,7 +63,8 @@ jobs:
           grep -F "/releases/download/$GITHUB_REF_NAME/$(basename "$PLUGIN_ARTIFACT")" manifest.json >/dev/null
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: linux-builder
+    container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
     name: Release
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
