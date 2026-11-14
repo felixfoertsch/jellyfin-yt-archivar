@@ -1,0 +1,158 @@
+name: TubeArchivistMetadata
+
+permissions:
+  code: read
+  releases: write
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: linux-builder
+    container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
+    name: Build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore TubeArchivistMetadata.sln
+
+      - name: Build
+        run: dotnet build TubeArchivistMetadata.sln -c Release --no-restore
+
+      - name: Package plugin
+        run: |
+          set -euo pipefail
+
+          plugin_version="$(awk -F'\"' '/^version:/ { print $2 }' build.yaml)"
+          artifact="artifacts/tubearchivistmetadata_${plugin_version}.zip"
+          checksum="$(./scripts/package-release.sh)"
+
+          echo "PLUGIN_VERSION=$plugin_version" >> "$GITHUB_ENV"
+          echo "PLUGIN_ARTIFACT=$artifact" >> "$GITHUB_ENV"
+          echo "PLUGIN_CHECKSUM=$checksum" >> "$GITHUB_ENV"
+
+      - name: Validate release metadata
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$PLUGIN_VERSION" != "$tag_version" ] && [ "$PLUGIN_VERSION" != "${tag_version}.0" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match build.yaml version $PLUGIN_VERSION" >&2
+            exit 1
+          fi
+
+          grep -F "\"version\": \"$PLUGIN_VERSION\"" manifest.json >/dev/null
+          grep -F "\"checksum\": \"$PLUGIN_CHECKSUM\"" manifest.json >/dev/null
+          grep -F "/releases/download/$GITHUB_REF_NAME/$(basename "$PLUGIN_ARTIFACT")" manifest.json >/dev/null
+
+  release:
+    runs-on: linux-builder
+    container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Setup Go for tea
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.x
+
+      - name: Install tea
+        run: go install code.gitea.io/tea@v0.14.0
+
+      - name: Restore
+        run: dotnet restore TubeArchivistMetadata.sln
+
+      - name: Build
+        run: dotnet build TubeArchivistMetadata.sln -c Release --no-restore
+
+      - name: Package plugin
+        run: |
+          set -euo pipefail
+
+          plugin_version="$(awk -F'\"' '/^version:/ { print $2 }' build.yaml)"
+          artifact="artifacts/tubearchivistmetadata_${plugin_version}.zip"
+          checksum="$(./scripts/package-release.sh)"
+
+          echo "PLUGIN_VERSION=$plugin_version" >> "$GITHUB_ENV"
+          echo "PLUGIN_ARTIFACT=$artifact" >> "$GITHUB_ENV"
+          echo "PLUGIN_CHECKSUM=$checksum" >> "$GITHUB_ENV"
+
+      - name: Validate release metadata
+        run: |
+          set -euo pipefail
+
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$PLUGIN_VERSION" != "$tag_version" ] && [ "$PLUGIN_VERSION" != "${tag_version}.0" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match build.yaml version $PLUGIN_VERSION" >&2
+            exit 1
+          fi
+
+          grep -F "\"version\": \"$PLUGIN_VERSION\"" manifest.json >/dev/null
+          grep -F "\"checksum\": \"$PLUGIN_CHECKSUM\"" manifest.json >/dev/null
+          grep -F "/releases/download/$GITHUB_REF_NAME/$(basename "$PLUGIN_ARTIFACT")" manifest.json >/dev/null
+
+      - name: Generate release notes
+        run: |
+          set -euo pipefail
+
+          changelog="$(awk '/changelog:/ {flag=1; next} /^[^ ]/ {flag=0} flag' build.yaml | awk '{$1=$1};1')"
+          {
+            echo "Changelog:"
+            echo "* $changelog"
+          } > release-changelog.md
+
+      - name: Create Gitea release
+        env:
+          GITEA_SERVER_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GITEA_SERVER_TOKEN:-}" ]; then
+            echo "Missing built-in GITEA_TOKEN" >&2
+            exit 1
+          fi
+
+          tea logins add \
+            --name gitea \
+            --url "$GITHUB_SERVER_URL" \
+            --token "$GITEA_SERVER_TOKEN" \
+            --no-version-check
+
+          tea releases create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "TubeArchivist Metadata $PLUGIN_VERSION" \
+            --note-file release-changelog.md \
+            --asset "$PLUGIN_ARTIFACT" \
+            --login gitea
