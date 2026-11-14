@@ -1,7 +1,7 @@
 <h1 align="center">Jellyfin TubeArchivist Plugin</h1>
 
 <p align="center">
-<img alt="Plugin Banner" src="https://git.felixfoertsch.de/felixfoertsch/tubearchivist-jf-plugin/raw/branch/main/images/logo.png"/>
+<img alt="Plugin Banner" src="https://foerge.de/felixfoertsch/tubearchivist-jf-plugin/raw/branch/main/images/logo.png"/>
 <br/>
 </p>
 
@@ -38,7 +38,7 @@ The plugin interacts with TubeArchivist APIs to fetch videos and channels metada
 1. Go to `Dashboard -> Plugins` and click on the `Manage Repositories` button
 2. Add a new repository with the following details:
 - Repository name: `TubeArchivistMetadata`
-- Repository URL: `https://git.felixfoertsch.de/felixfoertsch/tubearchivist-jf-plugin/raw/branch/main/manifest.json`
+- Repository URL: `https://foerge.de/felixfoertsch/tubearchivist-jf-plugin/raw/branch/main/manifest.json`
   ![Add repository](https://github.com/user-attachments/assets/337ba921-bc97-47ea-815c-c664cf7661a2)
 
 3. Go back to the catalog
