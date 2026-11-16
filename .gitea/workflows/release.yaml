@@ -1,18 +1,17 @@
-name: TubeArchivistMetadata
-
-permissions:
-  code: read
-  releases: write
+name: Jellyfin edge release
 
 on:
   push:
-    branches:
-      - main
-    tags:
-      - v*
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+concurrency:
+  group: jellyfin-release
+  cancel-in-progress: false
+
+permissions:
+  code: read
 
 defaults:
   run:
@@ -22,137 +21,50 @@ jobs:
   build:
     runs-on: linux-builder
     container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
-    name: Build
-
+    outputs:
+      tag: ${{ steps.identity.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
+      - run: python3 scripts/test-release.py
+      - id: identity
+        run: echo "tag=v$(date -u +%Y.%m.%d).$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+      - run: python3 scripts/release.py build "$EDGE_TAG" "$GITHUB_SHA" artifacts
+        env:
+          EDGE_TAG: ${{ steps.identity.outputs.tag }}
+      # Gitea-compatible v4 fork, also used by belt, Vigil and memory.
+      - uses: https://github.com/ChristopherHX/gitea-upload-artifact@81f940d004763f986ba3582c007fd842dd5cb0d7
+        with:
+          name: jellyfin-edge
+          path: artifacts/*
+          if-no-files-found: error
 
-      - name: Restore
-        run: dotnet restore TubeArchivistMetadata.sln
-
-      - name: Build
-        run: dotnet build TubeArchivistMetadata.sln -c Release --no-restore
-
-      - name: Package plugin
-        run: |
-          set -euo pipefail
-
-          plugin_version="$(awk -F'\"' '/^version:/ { print $2 }' build.yaml)"
-          artifact="artifacts/tubearchivistmetadata_${plugin_version}.zip"
-          checksum="$(./scripts/package-release.sh)"
-
-          echo "PLUGIN_VERSION=$plugin_version" >> "$GITHUB_ENV"
-          echo "PLUGIN_ARTIFACT=$artifact" >> "$GITHUB_ENV"
-          echo "PLUGIN_CHECKSUM=$checksum" >> "$GITHUB_ENV"
-
-      - name: Validate release metadata
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          set -euo pipefail
-
-          tag_version="${GITHUB_REF_NAME#v}"
-          if [ "$PLUGIN_VERSION" != "$tag_version" ] && [ "$PLUGIN_VERSION" != "${tag_version}.0" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match build.yaml version $PLUGIN_VERSION" >&2
-            exit 1
-          fi
-
-          grep -F "\"version\": \"$PLUGIN_VERSION\"" manifest.json >/dev/null
-          grep -F "\"checksum\": \"$PLUGIN_CHECKSUM\"" manifest.json >/dev/null
-          grep -F "/releases/download/$GITHUB_REF_NAME/$(basename "$PLUGIN_ARTIFACT")" manifest.json >/dev/null
-
-  release:
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'felixfoertsch/tubearchivist-jellyfin-plugin'
+    needs: build
     runs-on: linux-builder
     container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
-    name: Release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-
+    permissions:
+      code: read
+      releases: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
         with:
-          dotnet-version: 9.0.x
-
-      - name: Setup Go for tea
-        uses: actions/setup-go@v5
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: https://github.com/ChristopherHX/gitea-download-artifact@75635f32b4c1c41c4b3d64e8f85210112ed4c9c7
         with:
-          go-version: 1.26.x
-
-      - name: Install tea
-        run: go install code.gitea.io/tea@v0.14.0
-
-      - name: Restore
-        run: dotnet restore TubeArchivistMetadata.sln
-
-      - name: Build
-        run: dotnet build TubeArchivistMetadata.sln -c Release --no-restore
-
-      - name: Package plugin
-        run: |
-          set -euo pipefail
-
-          plugin_version="$(awk -F'\"' '/^version:/ { print $2 }' build.yaml)"
-          artifact="artifacts/tubearchivistmetadata_${plugin_version}.zip"
-          checksum="$(./scripts/package-release.sh)"
-
-          echo "PLUGIN_VERSION=$plugin_version" >> "$GITHUB_ENV"
-          echo "PLUGIN_ARTIFACT=$artifact" >> "$GITHUB_ENV"
-          echo "PLUGIN_CHECKSUM=$checksum" >> "$GITHUB_ENV"
-
-      - name: Validate release metadata
-        run: |
-          set -euo pipefail
-
-          tag_version="${GITHUB_REF_NAME#v}"
-          if [ "$PLUGIN_VERSION" != "$tag_version" ] && [ "$PLUGIN_VERSION" != "${tag_version}.0" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match build.yaml version $PLUGIN_VERSION" >&2
-            exit 1
-          fi
-
-          grep -F "\"version\": \"$PLUGIN_VERSION\"" manifest.json >/dev/null
-          grep -F "\"checksum\": \"$PLUGIN_CHECKSUM\"" manifest.json >/dev/null
-          grep -F "/releases/download/$GITHUB_REF_NAME/$(basename "$PLUGIN_ARTIFACT")" manifest.json >/dev/null
-
-      - name: Generate release notes
-        run: |
-          set -euo pipefail
-
-          changelog="$(awk '/changelog:/ {flag=1; next} /^[^ ]/ {flag=0} flag' build.yaml | awk '{$1=$1};1')"
-          {
-            echo "Changelog:"
-            echo "* $changelog"
-          } > release-changelog.md
-
-      - name: Create Gitea release
+          name: jellyfin-edge
+          path: artifacts
+      - run: python3 scripts/release.py verify "$EDGE_TAG" "$GITHUB_SHA" artifacts
         env:
-          GITEA_SERVER_TOKEN: ${{ secrets.GITEA_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${GITEA_SERVER_TOKEN:-}" ]; then
-            echo "Missing built-in GITEA_TOKEN" >&2
-            exit 1
-          fi
-
-          tea logins add \
-            --name gitea \
-            --url "$GITHUB_SERVER_URL" \
-            --token "$GITEA_SERVER_TOKEN" \
-            --no-version-check
-
-          tea releases create "$GITHUB_REF_NAME" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "TubeArchivist Metadata $PLUGIN_VERSION" \
-            --note-file release-changelog.md \
-            --asset "$PLUGIN_ARTIFACT" \
-            --login gitea
+          EDGE_TAG: ${{ needs.build.outputs.tag }}
+      - run: python3 scripts/release.py publish "$EDGE_TAG" "$GITHUB_SHA" artifacts
+        env:
+          EDGE_TAG: ${{ needs.build.outputs.tag }}
+          GITEA_TOKEN: ${{ github.token }}
