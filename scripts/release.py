@@ -125,11 +125,9 @@ def publish(directory, tag, sha):
 		data = (directory / name).read_bytes()
 		boundary = 'jellyfin-edge-upload'
 		body = (f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode() + data + f'\r\n--{boundary}--\r\n'.encode())
-		asset = json.loads(request(f'/releases/{release["id"]}/assets?name={name}', body, 'POST', 'multipart/form-data; boundary=' + boundary))
-		# Download through the fixed forge API, never a URL supplied by the build artifact.
+		request(f'/releases/{release["id"]}/assets?name={name}', body, 'POST', 'multipart/form-data; boundary=' + boundary)
+		# Upload responses may use /attachments/<uuid>; verify bytes at the fixed release URL.
 		url = f'{BASE}/releases/download/{tag}/{name}'
-		if not (asset['browser_download_url'] == url):
-			raise ValueError("Release validation failed: asset['browser_download_url'] == url")
 		with HTTP.open(urllib.request.Request(url, headers={'Authorization': 'token ' + token}), timeout=60) as response:
 			remote = response.read()
 		if not (digest(remote) == digest(data)):

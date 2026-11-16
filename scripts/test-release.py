@@ -29,6 +29,30 @@ with tempfile.TemporaryDirectory() as temp:
 		assets={name: release.digest((directory / name).read_bytes()) for name in [release.ASSET, 'manifest.json']})
 	(directory / 'build.json').write_text(json.dumps(metadata))
 	release.verify(directory, tag, sha)
+	# Gitea's upload response may return an attachment URL, not the release URL.
+	from unittest.mock import patch
+	import io
+	import urllib.error
+	urls = []
+	def fake_open(request, timeout):
+		url = request.full_url
+		urls.append(url)
+		if '/git/commits/' in url:
+			return io.BytesIO(json.dumps({'sha': sha}).encode())
+		if '/tags/' in url:
+			raise urllib.error.HTTPError(url, 404, 'Not Found', {}, None)
+		if request.get_method() == 'POST' and url.endswith('/releases'):
+			return io.BytesIO(b'{"id":1}')
+		if '/assets?' in url:
+			return io.BytesIO(b'{"browser_download_url":"https://example.com/attachments/uuid"}')
+		if '/releases/download/' in url:
+			return io.BytesIO((directory / url.rsplit('/', 1)[1]).read_bytes())
+		if request.get_method() == 'PATCH':
+			return io.BytesIO(b'{}')
+		raise AssertionError(url)
+	with patch.dict(release.os.environ, GITHUB_REPOSITORY=release.REPO, GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITEA_TOKEN='test'), patch.object(release.HTTP, 'open', side_effect=fake_open):
+		release.publish(directory, tag, sha)
+	assert all(url.startswith('https://foerge.de/') for url in urls)
 	for field, value in [('channel', 'stable'), ('sourceRevision', 'b' * 40)]:
 		changed = dict(metadata, **{field: value})
 		(directory / 'build.json').write_text(json.dumps(changed))
