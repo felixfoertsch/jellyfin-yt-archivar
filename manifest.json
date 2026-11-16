@@ -6,7 +6,7 @@
         "description": "TubeArchivistMetadata is a plugin that automatically manages metadata for videos downloaded with TubeArchivist from YouTube.\n",
         "owner": "DarkFighterLuke",
         "overview": "Metadata for your TubeArchivist library on Jellyfin",
-        "imageUrl": "https://foerge.de/felixfoertsch/tubearchivist-jf-plugin/raw/branch/main/images/logo.png",
+        "imageUrl": "https://foerge.de/felixfoertsch/tubearchivist-jellyfin-plugin/raw/branch/main/images/logo.png",
         "versions": [
             {
                 "version": "1.4.5.0",
