@@ -130,13 +130,14 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
         /// <returns>True when the item belongs to the configured TubeArchivist collection.</returns>
         public static bool IsTubeArchivistItem(BaseItem item)
         {
-            if (string.IsNullOrWhiteSpace(Plugin.Instance?.Configuration.CollectionTitle))
+            var plugin = Plugin.Instance;
+            if (string.IsNullOrWhiteSpace(plugin?.Configuration.CollectionTitle))
             {
                 return false;
             }
 
-            var topParent = item.GetTopParent();
-            return string.Equals(topParent?.Name, Plugin.Instance.Configuration.CollectionTitle, StringComparison.OrdinalIgnoreCase);
+            return plugin.LibraryManager.GetCollectionFolders(item).Exists(folder =>
+                string.Equals(folder.Name, plugin.Configuration.CollectionTitle, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
