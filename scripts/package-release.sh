@@ -13,7 +13,7 @@ main() {
 	version="$(awk -F'\"' '/^version:/ { print $2 }' build.yaml)"
 
 	local dll_path
-	dll_path="Jellyfin.Plugin.TubeArchivistMetadata/bin/Release/net9.0/Jellyfin.Plugin.TubeArchivistMetadata.dll"
+	dll_path="Jellyfin.Plugin.YouTubeArchivar/bin/Release/net10.0/Jellyfin.Plugin.YouTubeArchivar.dll"
 	if [[ ! -f "$dll_path" ]]; then
 		echo "Missing release DLL: $dll_path" >&2
 		exit 1
@@ -31,11 +31,11 @@ main() {
 	package_dir="$(mktemp -d)"
 	trap 'rm -rf "'"$package_dir"'"' EXIT
 
-	cp "$dll_path" "$package_dir/Jellyfin.Plugin.TubeArchivistMetadata.dll"
-	TZ=UTC touch -t 198001010000 "$package_dir/Jellyfin.Plugin.TubeArchivistMetadata.dll"
+	cp "$dll_path" "$package_dir/Jellyfin.Plugin.YouTubeArchivar.dll"
+	TZ=UTC touch -t 198001010000 "$package_dir/Jellyfin.Plugin.YouTubeArchivar.dll"
 	(
 		cd "$package_dir"
-		TZ=UTC zip -X -q "$root/$zip_path" Jellyfin.Plugin.TubeArchivistMetadata.dll
+		TZ=UTC zip -X -q "$root/$zip_path" Jellyfin.Plugin.YouTubeArchivar.dll
 	)
 
 	local entry_count
@@ -48,7 +48,7 @@ main() {
 
 	local entry_name
 	entry_name="$(zipinfo -1 "$zip_path")"
-	if [[ "$entry_name" != "Jellyfin.Plugin.TubeArchivistMetadata.dll" ]]; then
+	if [[ "$entry_name" != "Jellyfin.Plugin.YouTubeArchivar.dll" ]]; then
 		echo "Unexpected zip entry: $entry_name" >&2
 		exit 1
 	fi

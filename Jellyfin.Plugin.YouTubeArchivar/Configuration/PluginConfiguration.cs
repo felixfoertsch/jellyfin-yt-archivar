@@ -1,6 +1,6 @@
 using MediaBrowser.Model.Plugins;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.Configuration
+namespace Jellyfin.Plugin.YouTubeArchivar.Configuration
 {
     /// <summary>Metadata-only settings. Unknown legacy sync settings are ignored.</summary>
     public class PluginConfiguration : BasePluginConfiguration

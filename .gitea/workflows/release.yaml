@@ -37,8 +37,8 @@ jobs:
           test "$(uname -m)" = x86_64
           sdk="$RUNNER_TEMP/dotnet-sdk.tar.gz"
           curl --fail --location --retry 2 --connect-timeout 20 --max-time 480 \
-            https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0.321/dotnet-sdk-9.0.321-linux-x64.tar.gz -o "$sdk"
-          echo "612bae8e90be6e69b65b904647b88a28d0d8c4d79ed4b208d9fdfa61ab34be57e6fd018ab46c3897dc08aad203380130e6af3e748f742a09aa11f8f189cab7e8  $sdk" | sha512sum --check
+            https://dotnetcli.blob.core.windows.net/dotnet/Sdk/10.0.400/dotnet-sdk-10.0.400-linux-x64.tar.gz -o "$sdk"
+          echo "1033977dd837150e0814cf0c5d5b17ceb63925fda7ba2158b47258a4bd7c048cf82eac3bc1166f3146f53124a3f5fba09db1de1260d2ce96399860303b404b48  $sdk" | sha512sum --check
           mkdir -p "$RUNNER_TEMP/dotnet"
           tar -xzf "$sdk" -C "$RUNNER_TEMP/dotnet"
           echo "$RUNNER_TEMP/dotnet" >> "$GITHUB_PATH"

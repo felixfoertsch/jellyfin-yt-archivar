@@ -9,6 +9,12 @@ import release
 
 sha = 'a' * 40
 tag = 'v2026.11.16.123'
+plugin, legacy = json.loads(Path('manifest.json').read_text())
+assert plugin['guid'] != legacy['guid'] and not plugin['versions'] and legacy['versions']
+for path in ['build.yaml', 'Jellyfin.Plugin.YouTubeArchivar/Constants.cs',
+	'Jellyfin.Plugin.YouTubeArchivar/Configuration/configPage.html']:
+	assert plugin['guid'] in Path(path).read_text(), path
+
 assert release.identity(tag, sha) == '1.5.0.123'
 assert release.identity('v2026.11.16.65535', sha) == '1.5.1.0'
 for invalid in ['v1.4.5', 'v2026.02.30.1', 'v2026.11.16.0', '../bad']:
@@ -21,9 +27,9 @@ for invalid in ['v1.4.5', 'v2026.02.30.1', 'v2026.11.16.0', '../bad']:
 with tempfile.TemporaryDirectory() as temp:
 	directory = Path(temp)
 	with zipfile.ZipFile(directory / release.ASSET, 'w') as archive:
-		archive.writestr('Jellyfin.Plugin.TubeArchivistMetadata.dll', b'test payload')
+		archive.writestr('Jellyfin.Plugin.YouTubeArchivar.dll', b'test payload')
 	plugin = json.loads(Path('manifest.json').read_text())[0]
-	entry = dict(plugin['versions'][0], version='1.5.0.123', sourceUrl=f'{release.BASE}/releases/download/{tag}/{release.ASSET}',
+	entry = dict(targetAbi='12.4.0.0', version='1.5.0.123', sourceUrl=f'{release.BASE}/releases/download/{tag}/{release.ASSET}',
 		timestamp='2026-11-16T00:00:00Z', changelog=f'Edge build {tag} ({sha})', checksum=hashlib.md5((directory / release.ASSET).read_bytes()).hexdigest())
 	plugin.update(imageUrl=f'{release.BASE}/raw/commit/{sha}/images/logo.png', versions=[entry])
 	(directory / 'manifest.json').write_text(json.dumps([plugin]))
@@ -122,24 +128,24 @@ print('release contract checks passed')
 
 # Metadata-only delivery must not register legacy synchronization again.
 root = Path(__file__).resolve().parents[1]
-sources = list((root / 'Jellyfin.Plugin.TubeArchivistMetadata').rglob('*.cs'))
+sources = list((root / 'Jellyfin.Plugin.YouTubeArchivar').rglob('*.cs'))
 sources = [p for p in sources if 'obj' not in p.parts and 'bin' not in p.parts]
 for path in sources:
  text = path.read_text()
  assert not any(value in text for value in ['PlaybackProgress +=', 'UserDataSaved +=', 'IScheduledTask', 'SetProgress(', 'SetWatchedStatus(', 'HttpMethod.Post', 'HttpMethod.Delete']), path
-assert not list((root / 'Jellyfin.Plugin.TubeArchivistMetadata/Tasks').glob('*.cs'))
-assert 'ParentIndexNumber = Published.Year' in (root / 'Jellyfin.Plugin.TubeArchivistMetadata/TubeArchivist/Video/Video.cs').read_text()
+assert not list((root / 'Jellyfin.Plugin.YouTubeArchivar/Tasks').glob('*.cs'))
+assert 'ParentIndexNumber = Published.Year' in (root / 'Jellyfin.Plugin.YouTubeArchivar/TubeArchivist/Video/Video.cs').read_text()
 print('metadata-only source safeguards passed')
 
 # Guard the real client/provider seams without adding a compatibility environment.
-api = (root / 'Jellyfin.Plugin.TubeArchivistMetadata/TubeArchivist/TubeArchivistApi.cs').read_text()
+api = (root / 'Jellyfin.Plugin.YouTubeArchivar/TubeArchivist/TubeArchivistApi.cs').read_text()
 assert "path.Contains('%', StringComparison.Ordinal)" in api
 assert 'Unknown artwork route.' in api and 'Ambiguous artwork path.' in api
 assert 'description == null' in api and 'JTokenType.Null' in api
 assert 'tags == null ? typeof(T) == typeof(Video)' in api
 for name in ['Episode', 'Series']:
- provider = (root / f'Jellyfin.Plugin.TubeArchivistMetadata/Providers/{name}MetadataProvider.cs').read_text()
+ provider = (root / f'Jellyfin.Plugin.YouTubeArchivar/Providers/{name}MetadataProvider.cs').read_text()
  assert 'ImageUrl = video.Channel' not in provider and 'ImageUrl = channel.ThumbUrl' not in provider
  assert 'taApi.NormalizeImage(entry.ImageUrl)' in provider
-assert 'result.Item.Tags = existing.Tags;' in (root / 'Jellyfin.Plugin.TubeArchivistMetadata/Providers/SeriesMetadataProvider.cs').read_text()
+assert 'result.Item.Tags = existing.Tags;' in (root / 'Jellyfin.Plugin.YouTubeArchivar/Providers/SeriesMetadataProvider.cs').read_text()
 print('artwork and replacement source safeguards passed')

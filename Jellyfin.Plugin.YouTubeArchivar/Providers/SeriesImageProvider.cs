@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist;
-using Jellyfin.Plugin.TubeArchivistMetadata.Utilities;
+using Jellyfin.Plugin.YouTubeArchivar.TubeArchivist;
+using Jellyfin.Plugin.YouTubeArchivar.Utilities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
@@ -15,7 +14,7 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
+namespace Jellyfin.Plugin.YouTubeArchivar.Providers
 {
     /// <summary>
     /// Image provider which interacts with TubeArchivist library.
@@ -42,7 +41,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         /// <summary>
         /// Gets the provider name.
         /// </summary>
-        public string Name => "TubeArchivist";
+        public string Name => Constants.ProviderName;
 
         /// <inheritdoc />
         public bool Supports(BaseItem item) => item is Series && Utils.IsTubeArchivistItem(item);
@@ -60,8 +59,10 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             var taApi = TubeArchivistApi.GetInstance();
             var channelTAId = Utils.GetChannelNameFromPath(item.Path);
             var channel = await taApi.GetChannel(channelTAId, cancellationToken).ConfigureAwait(true);
-            _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting images for channel: {0} ({1})", channel?.Name, channelTAId));
-            _logger.LogDebug("{Message}", "Thumb URI: " + channel?.ThumbUrl);
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Getting images for channel: {Title} ({Id})", channel?.Name, channelTAId);
+            }
 
             if (channel != null && Utils.HasImageUrl(channel.ThumbUrl))
             {

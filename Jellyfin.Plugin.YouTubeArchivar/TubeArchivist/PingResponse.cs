@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
 {
     /// <summary>
     /// A class representing TubeArchivist API ping response data.

@@ -1,9 +1,10 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text.RegularExpressions;
 using MediaBrowser.Controller.Entities;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
+namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
 {
     /// <summary>
     /// Class containing common utils.
@@ -143,7 +144,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
         /// </summary>
         /// <param name="url">Image URL returned by TubeArchivist.</param>
         /// <returns>True when the image URL is non-empty.</returns>
-        public static bool HasImageUrl(string? url)
+        public static bool HasImageUrl([NotNullWhen(true)] string? url)
         {
             return !string.IsNullOrWhiteSpace(url);
         }

@@ -8,7 +8,7 @@ TubeArchivist channels become shows, videos become episodes, and publication yea
 
 There are no progress/watched or playlist synchronization tasks, event handlers, startup actions or controls. Legacy sync flags/usernames/intervals are ignored and cannot reactivate synchronization. The plugin does not change existing history, playlists, playlist order, subscriptions, retention or media. Watch progress lives in Jellyfin. No account linking is needed.
 
-The plugin keeps its GUID `dc97d0c6-28b0-4242-afb4-5833ae1b3715`, URL/key/library/overview/numbering settings and historical catalog versions. Scope providers to the configured TubeArchivist library; mount its media read-only using the channel/video filesystem layout. Configure the library as Shows and enable TubeArchivist metadata/image providers; disable competing providers if unwanted. Seasons derive from episode publication years, not a separate season provider.
+YouTube Archivar uses its own plugin GUID `60b0b958-e53f-443d-b4dc-43c950bc75de`, assembly and settings file. Configure the backend and select the YouTube Archivar providers after installation. Scope providers to the configured TubeArchivist library; mount its media read-only using the channel/video filesystem layout. Configure the library as Shows and enable YouTube Archivar metadata/image providers; disable competing providers if unwanted. Seasons derive from episode publication years, not a separate season provider.
 
 ## Connection and safety
 
@@ -18,11 +18,11 @@ Source contracts reviewed against TubeArchivist `20e14a981330ed2d132347aa872684d
 
 ## Build and private delivery
 
-Target: .NET 9 (`net9.0`), Jellyfin.Controller/Model 10.11.0, catalog ABI 10.11.0.0. CI installs pinned SDK 9.0.321. Existing build checks remain mandatory:
+Target: .NET 10 (`net10.0`), Jellyfin.Controller/Model 12.4.0, catalog ABI 12.4.0.0. CI installs pinned SDK 10.0.400. Existing build checks remain mandatory:
 
 ```
 python3 scripts/test-release.py
-dotnet build TubeArchivistMetadata.sln -c Release
+dotnet build YouTubeArchivar.sln -c Release
 python3 scripts/release.py build "$EDGE_TAG" "$GITHUB_SHA" artifacts
 python3 scripts/release.py verify "$EDGE_TAG" "$GITHUB_SHA" artifacts
 ```

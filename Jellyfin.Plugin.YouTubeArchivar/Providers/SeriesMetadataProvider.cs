@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist;
-using Jellyfin.Plugin.TubeArchivistMetadata.Utilities;
+using Jellyfin.Plugin.YouTubeArchivar.TubeArchivist;
+using Jellyfin.Plugin.YouTubeArchivar.Utilities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
@@ -15,7 +14,7 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
+namespace Jellyfin.Plugin.YouTubeArchivar.Providers
 {
     /// <summary>
     /// Metadata provider which interacts with TubeArchivist library.
@@ -42,7 +41,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         /// <summary>
         /// Gets the provider name.
         /// </summary>
-        public string Name => "TubeArchivist";
+        public string Name => Constants.ProviderName;
 
         /// <inheritdoc />
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)
@@ -56,7 +55,10 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             var taApi = TubeArchivistApi.GetInstance();
             var channelTAId = Utils.GetChannelNameFromPath(info.Path);
             var channel = await taApi.GetChannel(channelTAId, cancellationToken).ConfigureAwait(true);
-            _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting metadata for channel: {0} ({1})", channel?.Name, channelTAId));
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug("Getting metadata for channel: {Title} ({Id})", channel?.Name, channelTAId);
+            }
 
             if (channel != null)
             {

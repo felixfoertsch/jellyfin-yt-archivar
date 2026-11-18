@@ -1,10 +1,10 @@
 ---
 name: "YouTube Archivar"
-guid: "dc97d0c6-28b0-4242-afb4-5833ae1b3715"
+guid: "60b0b958-e53f-443d-b4dc-43c950bc75de"
 imageUrl: https://foerge.de/felixfoertsch/jellyfin-yt-archivar/raw/branch/main/images/logo.png
 version: "1.4.5.0"
-targetAbi: "10.11.0.0"
-framework: "net9.0"
+targetAbi: "12.4.0.0"
+framework: "net10.0"
 overview: "Metadata for your YouTube Archivar library on Jellyfin"
 description: >
   YouTube Archivar is a plugin that automatically manages
@@ -12,6 +12,6 @@ description: >
 category: "Metadata"
 owner: "felixfoertsch (upstream: DarkFighterLuke)"
 artifacts:
-- "Jellyfin.Plugin.TubeArchivistMetadata.dll"
+- "Jellyfin.Plugin.YouTubeArchivar.dll"
 changelog: >
   Metadata and authenticated artwork only; no progress or playlist synchronization

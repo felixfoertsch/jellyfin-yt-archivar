@@ -1,4 +1,4 @@
-namespace Jellyfin.Plugin.TubeArchivistMetadata.Configuration;
+namespace Jellyfin.Plugin.YouTubeArchivar.Configuration;
 
 /// <summary>
 /// The NumberingScheme.

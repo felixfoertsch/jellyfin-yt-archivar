@@ -7,11 +7,11 @@
 </head>
 
 <body>
-    <div id="TemplateConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
+    <div id="YouTubeArchivarConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
         data-require="emby-input,emby-button,emby-select,emby-checkbox">
         <div data-role="content">
             <div class="content-primary">
-                <form id="TemplateConfigForm">
+                <form id="YouTubeArchivarConfigForm">
                     <div>
                         <h1>YouTube Archivar</h1>
                     </div>
@@ -64,14 +64,14 @@
             </div>
         </div>
         <script type="text/javascript">
-            var TAMetadataConfig = {
-                pluginUniqueId: 'dc97d0c6-28b0-4242-afb4-5833ae1b3715'
+            var YouTubeArchivarConfig = {
+                pluginUniqueId: '60b0b958-e53f-443d-b4dc-43c950bc75de'
             };
 
-            document.querySelector('#TemplateConfigPage')
+            document.querySelector('#YouTubeArchivarConfigPage')
                 .addEventListener('pageshow', function () {
                     Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(TAMetadataConfig.pluginUniqueId).then(function (config) {
+                    ApiClient.getPluginConfiguration(YouTubeArchivarConfig.pluginUniqueId).then(function (config) {
                         document.querySelector('#CollectionTitle').value = config.CollectionTitle;
                         document.querySelector('#TubeArchivistUrl').value = config.TubeArchivistUrl;
                         document.querySelector('#TubeArchivistApiKey').value = config.TubeArchivistApiKey;
@@ -81,16 +81,16 @@
                     });
                 });
 
-            document.querySelector('#TemplateConfigForm')
+            document.querySelector('#YouTubeArchivarConfigForm')
                 .addEventListener('submit', function (e) {
                     Dashboard.showLoadingMsg();
-                    ApiClient.getPluginConfiguration(TAMetadataConfig.pluginUniqueId).then(function (config) {
+                    ApiClient.getPluginConfiguration(YouTubeArchivarConfig.pluginUniqueId).then(function (config) {
                         config.CollectionTitle = document.querySelector('#CollectionTitle').value;
                         config.TubeArchivistUrl = document.querySelector('#TubeArchivistUrl').value;
                         config.TubeArchivistApiKey = document.querySelector('#TubeArchivistApiKey').value;
                         config.MaxDescriptionLength = document.querySelector('#MaxDescriptionLength').value;
                         config.EpisodeNumberingScheme = document.querySelector('#EpisodeNumberingScheme').value;
-                        ApiClient.updatePluginConfiguration(TAMetadataConfig.pluginUniqueId, config).then(function (result) {
+                        ApiClient.updatePluginConfiguration(YouTubeArchivarConfig.pluginUniqueId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
                         });
                     });

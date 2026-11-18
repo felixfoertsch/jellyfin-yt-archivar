@@ -1,14 +1,14 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using Jellyfin.Plugin.TubeArchivistMetadata.Utilities;
+using Jellyfin.Plugin.YouTubeArchivar.Utilities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Newtonsoft.Json;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
 {
     /// <summary>
     /// A class representing TubeArchivist API channel data.

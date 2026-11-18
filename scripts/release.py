@@ -47,15 +47,14 @@ def build(tag, sha, directory):
 	version = identity(tag, sha)
 	if not (subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == sha):
 		raise ValueError("Release validation failed: subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip() == sha")
-	subprocess.run(['dotnet', 'build', 'TubeArchivistMetadata.sln', '-c', 'Release',
+	subprocess.run(['dotnet', 'build', 'YouTubeArchivar.sln', '-c', 'Release',
 		f'-p:Version={version}', f'-p:AssemblyVersion={version}', f'-p:FileVersion={version}'], check=True)
 	directory.mkdir()
-	dll = Path('Jellyfin.Plugin.TubeArchivistMetadata/bin/Release/net9.0/Jellyfin.Plugin.TubeArchivistMetadata.dll').read_bytes()
+	dll = Path('Jellyfin.Plugin.YouTubeArchivar/bin/Release/net10.0/Jellyfin.Plugin.YouTubeArchivar.dll').read_bytes()
 	with zipfile.ZipFile(directory / ASSET, 'w', zipfile.ZIP_DEFLATED) as archive:
-		archive.writestr(zipfile.ZipInfo('Jellyfin.Plugin.TubeArchivistMetadata.dll', (1980, 1, 1, 0, 0, 0)), dll)
+		archive.writestr(zipfile.ZipInfo('Jellyfin.Plugin.YouTubeArchivar.dll', (1980, 1, 1, 0, 0, 0)), dll)
 	plugin = json.loads(Path('manifest.json').read_text())[0]
-	entry = dict(plugin['versions'][0])
-	entry.update(version=version, sourceUrl=f'{BASE}/releases/download/{tag}/{ASSET}',
+	entry = dict(targetAbi='12.4.0.0', version=version, sourceUrl=f'{BASE}/releases/download/{tag}/{ASSET}',
 		checksum=hashlib.md5((directory / ASSET).read_bytes()).hexdigest(),
 		timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'), changelog=f'Edge build {tag} ({sha})')
 	plugin.update(imageUrl=f'{BASE}/raw/commit/{sha}/images/logo.png', versions=[entry])
@@ -87,7 +86,7 @@ def verify(directory, tag, sha):
 	if not (entry[0]['checksum'] == hashlib.md5((directory / ASSET).read_bytes()).hexdigest()):
 		raise ValueError("Release validation failed: entry[0]['checksum'] == hashlib.md5((directory / ASSET).read_bytes()).hexdigest()")
 	plugin = json.loads(Path('manifest.json').read_text())[0]
-	expected_entry = dict(plugin['versions'][0], version=version,
+	expected_entry = dict(targetAbi='12.4.0.0', version=version,
 		sourceUrl=f'{BASE}/releases/download/{tag}/{ASSET}', checksum=hashlib.md5((directory / ASSET).read_bytes()).hexdigest(),
 		timestamp=entry[0]['timestamp'], changelog=f'Edge build {tag} ({sha})')
 	expected = dict(plugin, imageUrl=f'{BASE}/raw/commit/{sha}/images/logo.png', versions=[expected_entry])
@@ -98,8 +97,8 @@ def verify(directory, tag, sha):
 	if json.loads((directory / 'catalog.json').read_text()) != [consumer]:
 		raise ValueError('Consumer catalog mismatch')
 	with zipfile.ZipFile(directory / ASSET) as archive:
-		if not (archive.namelist() == ['Jellyfin.Plugin.TubeArchivistMetadata.dll']):
-			raise ValueError("Release validation failed: archive.namelist() == ['Jellyfin.Plugin.TubeArchivistMetadata.dll']")
+		if not (archive.namelist() == ['Jellyfin.Plugin.YouTubeArchivar.dll']):
+			raise ValueError("Release validation failed: archive.namelist() == ['Jellyfin.Plugin.YouTubeArchivar.dll']")
 		if not (archive.testzip() is None):
 			raise ValueError('Release validation failed: archive.testzip() is None')
 

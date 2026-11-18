@@ -1,4 +1,4 @@
-namespace Jellyfin.Plugin.TubeArchivistMetadata
+namespace Jellyfin.Plugin.YouTubeArchivar
 {
     /// <summary>
     /// Class containing plugin constants.
@@ -13,11 +13,11 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata
         /// <summary>
         /// Plugin GUID.
         /// </summary>
-        public const string PluginGuid = "dc97d0c6-28b0-4242-afb4-5833ae1b3715";
+        public const string PluginGuid = "60b0b958-e53f-443d-b4dc-43c950bc75de";
 
         /// <summary>
         /// Providers name.
         /// </summary>
-        public const string ProviderName = "TubeArchivist";
+        public const string ProviderName = PluginName;
     }
 }

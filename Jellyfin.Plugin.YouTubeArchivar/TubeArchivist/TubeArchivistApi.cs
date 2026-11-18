@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
 {
     /// <summary>Read-only client with a captured destination and credential.</summary>
     public class TubeArchivistApi

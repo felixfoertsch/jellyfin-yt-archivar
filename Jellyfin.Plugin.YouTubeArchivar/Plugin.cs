@@ -9,7 +9,7 @@ using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using Microsoft.Extensions.Logging;
 
-namespace Jellyfin.Plugin.TubeArchivistMetadata
+namespace Jellyfin.Plugin.YouTubeArchivar
 {
     /// <summary>Metadata and authenticated artwork only.</summary>
     public class Plugin : BasePlugin<Configuration.PluginConfiguration>, IHasWebPages
