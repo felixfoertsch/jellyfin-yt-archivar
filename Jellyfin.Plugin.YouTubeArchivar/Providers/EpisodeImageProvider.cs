@@ -45,7 +45,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         public string Name => Constants.ProviderName;
 
         /// <inheritdoc />
-        public bool Supports(BaseItem item) => item is Episode && Utils.IsTubeArchivistItem(item);
+        public bool Supports(BaseItem item) => item is Episode;
 
         /// <inheritdoc />
         public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
@@ -56,6 +56,12 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         /// <inheritdoc />
         public async Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
         {
+            // Jellyfin probes Supports with an unparented item when listing library options.
+            if (!Utils.IsTubeArchivistItem(item))
+            {
+                return Array.Empty<RemoteImageInfo>();
+            }
+
             var list = new List<RemoteImageInfo>();
             var taApi = TubeArchivistApi.GetInstance();
             var videoTAId = Utils.GetVideoNameFromPath(item.Path);
