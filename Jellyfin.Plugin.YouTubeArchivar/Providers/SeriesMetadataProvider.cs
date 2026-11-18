@@ -47,7 +47,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)
         {
             var result = new MetadataResult<Series>();
-            if (!Utils.IsTubeArchivistPath(info.Path))
+            if (!Utils.IsTubeArchivistPath(info.Path, isFolder: true))
             {
                 return result;
             }
@@ -92,7 +92,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
             var results = new List<RemoteSearchResult>();
-            if (!Utils.IsTubeArchivistPath(searchInfo.Path))
+            if (!Utils.IsTubeArchivistPath(searchInfo.Path, isFolder: true))
             {
                 return results;
             }

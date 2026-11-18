@@ -152,15 +152,16 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
 
         /// <summary>Checks a metadata path against its indexed library item.</summary>
         /// <param name="path">Media path.</param>
+        /// <param name="isFolder">Whether to look up a series directory or an episode file.</param>
         /// <returns>Whether it belongs to the configured library.</returns>
-        public static bool IsTubeArchivistPath(string path)
+        public static bool IsTubeArchivistPath(string path, bool isFolder)
         {
             if (string.IsNullOrWhiteSpace(path) || Plugin.Instance == null)
             {
                 return false;
             }
 
-            var item = Plugin.Instance.LibraryManager.FindByPath(path, false);
+            var item = Plugin.Instance.LibraryManager.FindByPath(path, isFolder);
             return item != null && IsTubeArchivistItem(item);
         }
 
