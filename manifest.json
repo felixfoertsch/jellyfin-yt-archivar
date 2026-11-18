@@ -2,19 +2,19 @@
   {
     "category": "Metadata",
     "guid": "dc97d0c6-28b0-4242-afb4-5833ae1b3715",
-    "name": "TubeArchivistMetadata",
-    "description": "TubeArchivistMetadata is a plugin that automatically manages metadata for videos downloaded with TubeArchivist from YouTube.\n",
+    "name": "YouTube Archivar",
+    "description": "YouTube Archivar is a plugin that automatically manages metadata for videos downloaded with YouTube Archivar.\n",
     "owner": "DarkFighterLuke",
-    "overview": "Metadata for your TubeArchivist library on Jellyfin",
-    "imageUrl": "https://raw.githubusercontent.com/felixfoertsch/tubearchivist-jellyfin-plugin/64e9fe1da89f430106f5c57e25372e103c6d74c2/images/logo.png",
+    "overview": "Metadata for your YouTube Archivar library on Jellyfin",
+    "imageUrl": "https://raw.githubusercontent.com/felixfoertsch/jellyfin-yt-archivar/0212d869bde11771a8078e0d105154b357b5ac3c/images/logo.png",
     "versions": [
       {
-        "version": "1.5.0.2082",
-        "changelog": "Edge build v2026.11.18.2082 (64e9fe1da89f430106f5c57e25372e103c6d74c2)",
+        "version": "1.5.0.2086",
+        "changelog": "Edge build v2026.11.18.2086 (0212d869bde11771a8078e0d105154b357b5ac3c)",
         "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/felixfoertsch/tubearchivist-jellyfin-plugin/releases/download/v2026.11.18.2082/tubearchivistmetadata.zip",
-        "checksum": "fc39f8d594bcc01b6c6de3d85bd4db89",
-        "timestamp": "2026-11-18T20:17:27.664751Z"
+        "sourceUrl": "https://github.com/felixfoertsch/jellyfin-yt-archivar/releases/download/v2026.11.18.2086/jellyfin-yt-archivar.zip",
+        "checksum": "e3264c945e301ac5239d182914ee4e79",
+        "timestamp": "2026-11-18T20:48:19.306243Z"
       }
     ]
   }
