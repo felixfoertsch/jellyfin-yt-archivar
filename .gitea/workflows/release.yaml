@@ -82,3 +82,26 @@ jobs:
         env:
           EDGE_TAG: ${{ needs.build.outputs.tag }}
           GITEA_TOKEN: ${{ github.token }}
+
+  # Keep repository writes out of the release publisher's token.
+  catalog:
+    timeout-minutes: 5
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'felixfoertsch/tubearchivist-jellyfin-plugin'
+    needs: [build, publish]
+    runs-on: linux-builder
+    container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
+    permissions:
+      code: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: https://github.com/ChristopherHX/gitea-download-artifact@75635f32b4c1c41c4b3d64e8f85210112ed4c9c7
+        with:
+          name: jellyfin-edge
+          path: artifacts
+      - run: python3 scripts/release.py publish_catalog "$EDGE_TAG" "$GITHUB_SHA" artifacts
+        env:
+          EDGE_TAG: ${{ needs.build.outputs.tag }}
+          GITEA_TOKEN: ${{ github.token }}

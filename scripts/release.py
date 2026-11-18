@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build once, verify delivered bytes, publish an immutable Jellyfin edge release."""
+import base64
 import datetime
 import hashlib
 import json
@@ -103,8 +104,7 @@ def verify(directory, tag, sha):
 			raise ValueError('Release validation failed: archive.testzip() is None')
 
 
-def publish(directory, tag, sha):
-	verify(directory, tag, sha)
+def publisher():
 	if not (os.environ['GITHUB_REPOSITORY'] == REPO):
 		raise ValueError("Release validation failed: os.environ['GITHUB_REPOSITORY'] == REPO")
 	if not (os.environ['GITHUB_REF'] == 'refs/heads/main'):
@@ -122,6 +122,13 @@ def publish(directory, tag, sha):
 		with HTTP.open(req, timeout=60) as response:
 			return response.read()
 
+	return request
+
+
+def publish(directory, tag, sha):
+	verify(directory, tag, sha)
+	request = publisher()
+	token = os.environ['GITEA_TOKEN']
 	# Check exact provenance against forge state; never move an existing tag or repair a partial release.
 	commit = json.loads(request('/git/commits/' + sha))
 	if not (commit['sha'] == sha):
@@ -149,8 +156,32 @@ def publish(directory, tag, sha):
 	request(f'/releases/{release["id"]}', b'{"draft":false}', 'PATCH')
 
 
+def publish_catalog(directory, tag, sha):
+	verify(directory, tag, sha)
+	request = publisher()
+	catalog = (directory / 'catalog.json').read_bytes()
+	# ponytail: one verified version; add retention only if older builds need catalog discovery.
+	version = json.loads(catalog)[0]['versions'][0]['version']
+	path = '/contents/manifest.json'
+	branch = 'jellyfin-catalog'
+	options = dict(branch=branch)
+	try:
+		current = json.loads(request(path + '?ref=' + branch))
+	except urllib.error.HTTPError as error:
+		if error.code != 404:
+			raise
+		current = json.loads(request(path + '?ref=main'))
+		options = dict(branch='main', new_branch=branch)
+	else:
+		previous = json.loads(base64.b64decode(current['content']))[0]['versions'][0]['version']
+		if tuple(map(int, previous.split('.'))) >= tuple(map(int, version.split('.'))):
+			return  # A retried older workflow must not roll the public catalog back.
+	request(path, json.dumps(dict(options, sha=current['sha'], content=base64.b64encode(catalog).decode(),
+		message=f'publish Jellyfin catalog for {tag}')).encode(), 'PUT')
+
+
 if __name__ == '__main__':
 	mode, tag, sha, directory = sys.argv[1:]
-	if not (mode in {'build', 'verify', 'publish'}):
-		raise ValueError("Release validation failed: mode in {'build', 'verify', 'publish'}")
+	if not (mode in {'build', 'verify', 'publish', 'publish_catalog'}):
+		raise ValueError(f'Invalid release command: {mode}')
 	globals()[mode](Path(directory), tag, sha) if mode != 'build' else build(tag, sha, Path(directory))
