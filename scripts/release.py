@@ -15,6 +15,7 @@ import zipfile
 ASSET = 'tubearchivistmetadata.zip'
 REPO = 'felixfoertsch/tubearchivist-jellyfin-plugin'
 BASE = 'https://foerge.de/' + REPO
+PUBLIC = 'https://github.com/' + REPO
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -58,20 +59,22 @@ def build(tag, sha, directory):
 		timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z'), changelog=f'Edge build {tag} ({sha})')
 	plugin.update(imageUrl=f'{BASE}/raw/commit/{sha}/images/logo.png', versions=[entry])
 	(directory / 'manifest.json').write_text(json.dumps([plugin], indent=2) + '\n')
+	consumer = dict(plugin, imageUrl=f'https://raw.githubusercontent.com/{REPO}/{sha}/images/logo.png', versions=[dict(entry, sourceUrl=f'{PUBLIC}/releases/download/{tag}/{ASSET}')])
+	(directory / 'catalog.json').write_text(json.dumps([consumer], indent=2) + '\n')
 	metadata = dict(channel='edge', releaseTag=tag, sourceRevision=sha, pluginVersion=version,
-		assets={name: digest((directory / name).read_bytes()) for name in [ASSET, 'manifest.json']})
+		assets={name: digest((directory / name).read_bytes()) for name in [ASSET, 'manifest.json', 'catalog.json']})
 	(directory / 'build.json').write_text(json.dumps(metadata, indent=2) + '\n')
 
 
 def verify(directory, tag, sha):
 	version = identity(tag, sha)
-	if not ({p.name for p in directory.iterdir()} == {ASSET, 'manifest.json', 'build.json'}):
-		raise ValueError("Release validation failed: {p.name for p in directory.iterdir()} == {ASSET, 'manifest.json', 'build.json'}")
+	if not ({p.name for p in directory.iterdir()} == {ASSET, 'manifest.json', 'catalog.json', 'build.json'}):
+		raise ValueError("Release validation failed: {p.name for p in directory.iterdir()} == {ASSET, 'manifest.json', 'catalog.json', 'build.json'}")
 	metadata = json.loads((directory / 'build.json').read_text())
 	if not ((metadata['channel'], metadata['releaseTag'], metadata['sourceRevision'], metadata['pluginVersion']) == ('edge', tag, sha, version)):
 		raise ValueError("Release validation failed: (metadata['channel'], metadata['releaseTag'], metadata['sourceRevision'], metadata['pluginVersion']) == ('edge', tag, sha, version)")
-	if not (set(metadata['assets']) == {ASSET, 'manifest.json'}):
-		raise ValueError("Release validation failed: set(metadata['assets']) == {ASSET, 'manifest.json'}")
+	if not (set(metadata['assets']) == {ASSET, 'manifest.json', 'catalog.json'}):
+		raise ValueError("Release validation failed: set(metadata['assets']) == {ASSET, 'manifest.json', 'catalog.json'}")
 	for name, info in metadata['assets'].items():
 		if not (digest((directory / name).read_bytes()) == info):
 			raise ValueError(f'Hash mismatch: {name}')
@@ -82,6 +85,17 @@ def verify(directory, tag, sha):
 		raise ValueError("Release validation failed: entry[0]['version'] == version and entry[0]['sourceUrl'] == f'{BASE}/releases/download/{tag}/{ASSET}'")
 	if not (entry[0]['checksum'] == hashlib.md5((directory / ASSET).read_bytes()).hexdigest()):
 		raise ValueError("Release validation failed: entry[0]['checksum'] == hashlib.md5((directory / ASSET).read_bytes()).hexdigest()")
+	plugin = json.loads(Path('manifest.json').read_text())[0]
+	expected_entry = dict(plugin['versions'][0], version=version,
+		sourceUrl=f'{BASE}/releases/download/{tag}/{ASSET}', checksum=hashlib.md5((directory / ASSET).read_bytes()).hexdigest(),
+		timestamp=entry[0]['timestamp'], changelog=f'Edge build {tag} ({sha})')
+	expected = dict(plugin, imageUrl=f'{BASE}/raw/commit/{sha}/images/logo.png', versions=[expected_entry])
+	if json.loads((directory / 'manifest.json').read_text()) != [expected]:
+		raise ValueError('Private catalog mismatch')
+	consumer = dict(expected, imageUrl=f'https://raw.githubusercontent.com/{REPO}/{sha}/images/logo.png',
+		versions=[dict(expected_entry, sourceUrl=f'{PUBLIC}/releases/download/{tag}/{ASSET}')])
+	if json.loads((directory / 'catalog.json').read_text()) != [consumer]:
+		raise ValueError('Consumer catalog mismatch')
 	with zipfile.ZipFile(directory / ASSET) as archive:
 		if not (archive.namelist() == ['Jellyfin.Plugin.TubeArchivistMetadata.dll']):
 			raise ValueError("Release validation failed: archive.namelist() == ['Jellyfin.Plugin.TubeArchivistMetadata.dll']")
@@ -121,7 +135,7 @@ def publish(directory, tag, sha):
 		raise RuntimeError('Tag already exists; published identities are immutable')
 	release = json.loads(request('/releases', json.dumps(dict(tag_name=tag, target_commitish=sha,
 		name=tag, draft=True, prerelease=True, body=f'Experimental edge build of {sha}. No consumer installation.')).encode(), 'POST'))
-	for name in [ASSET, 'manifest.json', 'build.json']:
+	for name in [ASSET, 'manifest.json', 'catalog.json', 'build.json']:
 		data = (directory / name).read_bytes()
 		boundary = 'jellyfin-edge-upload'
 		body = (f'--{boundary}\r\nContent-Disposition: form-data; name="attachment"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode() + data + f'\r\n--{boundary}--\r\n'.encode())

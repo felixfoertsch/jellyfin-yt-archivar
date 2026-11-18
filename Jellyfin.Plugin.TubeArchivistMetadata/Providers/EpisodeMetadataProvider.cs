@@ -15,7 +15,6 @@ using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
 {
@@ -50,16 +49,15 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         public async Task<MetadataResult<Episode>> GetMetadata(EpisodeInfo info, CancellationToken cancellationToken)
         {
             var result = new MetadataResult<Episode>();
-            if (string.IsNullOrWhiteSpace(info.Path))
+            if (!Utils.IsTubeArchivistPath(info.Path))
             {
                 return result;
             }
 
             var taApi = TubeArchivistApi.GetInstance();
             var videoTAId = Utils.GetVideoNameFromPath(info.Path);
-            var video = await taApi.GetVideo(videoTAId).ConfigureAwait(true);
+            var video = await taApi.GetVideo(videoTAId, cancellationToken).ConfigureAwait(true);
             _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting metadata for video: {0} ({1})", video?.Title, videoTAId));
-            _logger.LogDebug("{Message}", "Received metadata: \n" + JsonConvert.SerializeObject(video));
 
             if (video != null)
             {
@@ -67,7 +65,6 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                 PeopleHelper.AddPerson(peopleInfo, new PersonInfo
                 {
                     Name = video.Channel.Name,
-                    ImageUrl = video.Channel.ThumbUrl,
                     Type = Data.Enums.PersonKind.Actor,
                 });
                 result.HasMetadata = true;
@@ -84,17 +81,19 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(EpisodeInfo searchInfo, CancellationToken cancellationToken)
         {
             var results = new List<RemoteSearchResult>();
-            if (string.IsNullOrWhiteSpace(searchInfo.Path))
+            if (!Utils.IsTubeArchivistPath(searchInfo.Path))
             {
                 return results;
             }
 
             var taApi = TubeArchivistApi.GetInstance();
             var videoTAId = Utils.GetVideoNameFromPath(searchInfo.Path);
-            var video = await taApi.GetVideo(videoTAId).ConfigureAwait(true);
+            var video = await taApi.GetVideo(videoTAId, cancellationToken).ConfigureAwait(true);
             if (video != null)
             {
-                results.Add(video.ToSearchResult());
+                var entry = video.ToSearchResult();
+                entry.ImageUrl = Utils.HasImageUrl(entry.ImageUrl) ? taApi.NormalizeImage(entry.ImageUrl) : null;
+                results.Add(entry);
             }
 
             return results;
@@ -109,7 +108,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             }
             else
             {
-                return await Plugin.Instance.HttpClient.GetAsync(new Uri(Utils.SanitizeUrl(Plugin.Instance.Configuration.TubeArchivistUrl + url).TrimEnd('/')), cancellationToken).ConfigureAwait(false);
+                return await TubeArchivistApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
             }
         }
     }
