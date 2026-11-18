@@ -10,8 +10,8 @@ description: >
   TubeArchivistMetadata is a plugin that automatically manages
   metadata for videos downloaded with TubeArchivist from YouTube.
 category: "Metadata"
-owner: "DarkFighterLuke"
+owner: "felixfoertsch (upstream: DarkFighterLuke)"
 artifacts:
 - "Jellyfin.Plugin.TubeArchivistMetadata.dll"
 changelog: >
-  Limit providers to TubeArchivist paths, skip empty image URLs, and fix playlist sync intervals
+  Metadata and authenticated artwork only; no progress or playlist synchronization

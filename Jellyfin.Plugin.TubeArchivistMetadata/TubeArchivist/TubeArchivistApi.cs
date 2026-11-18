@@ -1,339 +1,202 @@
 using System;
-using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
+using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.TubeArchivistMetadata.Utilities;
-using MediaBrowser.Model.Playlists;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
 {
-    /// <summary>
-    /// Class to interact with TubeArchivist API.
-    /// </summary>
+    /// <summary>Read-only client with a captured destination and credential.</summary>
     public class TubeArchivistApi
     {
-        private ILogger _logger;
-        private HttpClient client;
-        private static TubeArchivistApi _taApiInstance = null!;
+        private readonly HttpClient _client;
+        private readonly Uri _base;
+        private readonly string _token;
+        private readonly string _configuredUrl;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="TubeArchivistApi"/> class.
-        /// </summary>
-        /// <param name="httpClient">HTTP client to make requests to TubeArchivist API.</param>
-        private TubeArchivistApi(HttpClient httpClient)
+        /// <summary>Initializes a new instance of the <see cref="TubeArchivistApi"/> class.</summary>
+        /// <param name="httpClient">Redirect-disabled HTTP client.</param>
+        public TubeArchivistApi(HttpClient httpClient)
         {
-            if (Plugin.Instance == null)
+            _client = httpClient;
+            var config = Plugin.Instance!.Configuration;
+            _configuredUrl = config.TubeArchivistUrl;
+            var value = _configuredUrl.Trim();
+            if (!value.Contains("://", StringComparison.Ordinal))
             {
-                throw new DataException("Uninitialized plugin!");
+                value = "http://" + value;
+            }
+
+            if (!Uri.TryCreate(value.TrimEnd('/') + "/", UriKind.Absolute, out var url)
+                || (url.Scheme != "http" && url.Scheme != "https") || !string.IsNullOrEmpty(url.UserInfo)
+                || !string.IsNullOrEmpty(url.Query) || !string.IsNullOrEmpty(url.Fragment))
+            {
+                throw new DataException("Configure an HTTP(S) backend URL without credentials, query or fragment.");
+            }
+
+            _base = url;
+            _token = config.TubeArchivistApiKey;
+            if (string.IsNullOrWhiteSpace(_token))
+            {
+                throw new DataException("Configure a TubeArchivist API token.");
+            }
+        }
+
+        /// <summary>Creates a client for the current settings.</summary>
+        /// <returns>The client.</returns>
+        public static TubeArchivistApi GetInstance() => new TubeArchivistApi(Plugin.Instance!.HttpClient);
+
+        private void EnsureCurrent()
+        {
+            var config = Plugin.Instance!.Configuration;
+            if (config.TubeArchivistUrl != _configuredUrl || config.TubeArchivistApiKey != _token)
+            {
+                throw new DataException("Connection changed; response discarded.");
+            }
+        }
+
+        private async Task<HttpResponseMessage> Send(Uri url, CancellationToken cancellationToken)
+        {
+            if (url.Scheme != _base.Scheme || url.Host != _base.Host || url.Port != _base.Port
+                || !url.AbsolutePath.StartsWith(_base.AbsolutePath, StringComparison.Ordinal)
+                || !string.IsNullOrEmpty(url.UserInfo) || !string.IsNullOrEmpty(url.Query) || !string.IsNullOrEmpty(url.Fragment))
+            {
+                throw new DataException("Refusing credentials outside the configured backend base.");
+            }
+
+            EnsureCurrent();
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Token", _token);
+            var response = await _client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                EnsureCurrent();
+                response.EnsureSuccessStatusCode();
+                return response;
+            }
+            catch
+            {
+                response.Dispose();
+                throw;
+            }
+        }
+
+        /// <summary>Reads protected artwork within the backend base.</summary>
+        /// <param name="path">Relative or same-origin image URL.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>The authenticated response.</returns>
+        public Task<HttpResponseMessage> GetImage(string path, CancellationToken cancellationToken)
+        {
+            return Send(new Uri(NormalizeImage(path)), cancellationToken);
+        }
+
+        /// <summary>Validates and resolves only maintained backend thumbnail routes.</summary>
+        /// <param name="path">Backend artwork reference.</param>
+        /// <returns>The guarded absolute URL.</returns>
+        public string NormalizeImage(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || path.Contains('%', StringComparison.Ordinal) || path.Contains('\\', StringComparison.Ordinal)
+                || path.Contains("..", StringComparison.Ordinal) || path.StartsWith("//", StringComparison.Ordinal))
+            {
+                throw new DataException("Ambiguous artwork path.");
+            }
+
+            string relative;
+            if (path.Contains("://", StringComparison.Ordinal) && Uri.TryCreate(path, UriKind.Absolute, out var absolute))
+            {
+                if (absolute.Scheme != _base.Scheme || absolute.Authority != _base.Authority
+                    || !absolute.AbsolutePath.StartsWith(_base.AbsolutePath, StringComparison.Ordinal)
+                    || !string.IsNullOrEmpty(absolute.UserInfo) || !string.IsNullOrEmpty(absolute.Query) || !string.IsNullOrEmpty(absolute.Fragment))
+                {
+                    throw new DataException("External artwork rejected.");
+                }
+
+                relative = absolute.AbsolutePath.Substring(_base.AbsolutePath.Length);
             }
             else
             {
-                _logger = Plugin.Instance.Logger;
+                relative = path.StartsWith(_base.AbsolutePath, StringComparison.Ordinal)
+                    ? path.Substring(_base.AbsolutePath.Length) : path.TrimStart('/');
             }
 
-            client = httpClient;
+            if (!Regex.IsMatch(relative, "\\Amedia/thumb/(video/[A-Za-z0-9_-]{11}|channel/UC[A-Za-z0-9_-]{22}/(thumb|banner|tvart))\\.jpg\\z"))
+            {
+                throw new DataException("Unknown artwork route.");
+            }
+
+            return new Uri(_base, relative).AbsoluteUri;
         }
 
-        /// <summary>
-        /// Gets the instance of the <see cref="TubeArchivistApi"/> class.
-        /// </summary>
-        /// <returns>The TubeArchivistApi instance.</returns>
-        public static TubeArchivistApi GetInstance()
+        private async Task<T?> Read<T>(string path, CancellationToken cancellationToken)
         {
-            if (_taApiInstance == null)
+            try
             {
-                if (Plugin.Instance != null)
+                using var response = await Send(new Uri(_base, path), cancellationToken).ConfigureAwait(false);
+                var raw = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var document = JObject.Parse(raw);
+                var description = document[typeof(T) == typeof(Channel) ? "channel_description" : "description"];
+                var tags = document[typeof(T) == typeof(Channel) ? "channel_tags" : "tags"];
+                if (description == null || (description.Type != JTokenType.String && description.Type != JTokenType.Null)
+                    || (tags == null ? typeof(T) == typeof(Video) : tags.Type != JTokenType.Array || tags.Any(tag => tag.Type != JTokenType.String)))
                 {
-                    _taApiInstance = new TubeArchivistApi(Plugin.Instance.HttpClient);
+                    throw new DataException("Incomplete replacement metadata.");
                 }
-                else
-                {
-                    throw new DataException("Uninitialized plugin!");
-                }
-            }
 
-            return _taApiInstance;
+                var result = document.ToObject<T>();
+                EnsureCurrent();
+                return result ?? throw new DataException("Missing metadata response.");
+            }
+            catch (HttpRequestException error) when (error.StatusCode == HttpStatusCode.NotFound)
+            {
+                return default;
+            }
         }
 
-        /// <summary>
-        /// Retrieves the given channel information from TubeArchivist.
-        /// </summary>
-        /// <param name="channelId">YouTube channel id.</param>
-        /// <returns>A task.</returns>
-        public async Task<Channel?> GetChannel(string channelId)
+        /// <summary>Reads channel metadata.</summary>
+        /// <param name="channelId">YouTube channel ID.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Metadata, or null for a missing channel.</returns>
+        public async Task<Channel?> GetChannel(string channelId, CancellationToken cancellationToken = default)
         {
-            Channel? channel = null;
-
-            var channelsEndpoint = "/api/channel/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance?.Configuration.TubeArchivistUrl + channelsEndpoint + channelId));
-            var response = await client.GetAsync(url).ConfigureAwait(true);
-            while (response.StatusCode == HttpStatusCode.Moved)
+            if (!Regex.IsMatch(channelId, "^UC[A-Za-z0-9_-]{22}$"))
             {
-                url = response.Headers.Location;
-                _logger.LogDebug("{Message}", "Received redirect to: " + url);
-                response = await client.GetAsync(url).ConfigureAwait(true);
+                throw new DataException("Invalid channel ID.");
             }
 
-            _logger.LogDebug("{Message}", url + ": " + response.StatusCode);
-
-            if (response.IsSuccessStatusCode)
+            var result = await Read<Channel>("api/channel/" + channelId + "/", cancellationToken).ConfigureAwait(false);
+            if (result != null && (result.Id != channelId || string.IsNullOrWhiteSpace(result.Name)))
             {
-                string rawData = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                channel = JsonConvert.DeserializeObject<Channel>(rawData);
+                throw new DataException("Invalid channel metadata.");
             }
 
-            return channel;
+            return result;
         }
 
-        /// <summary>
-        /// Retrieves the given video information from TubeArchivist.
-        /// </summary>
-        /// <param name="videoId">YouTube video id.</param>
-        /// <returns>A task.</returns>
-        public async Task<Video?> GetVideo(string videoId)
+        /// <summary>Reads video metadata without playback authority.</summary>
+        /// <param name="videoId">YouTube video ID.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>Metadata, or null for a missing video.</returns>
+        public async Task<Video?> GetVideo(string videoId, CancellationToken cancellationToken = default)
         {
-            Video? video = null;
-
-            var videosEndpoint = "/api/video/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance?.Configuration.TubeArchivistUrl + videosEndpoint + videoId));
-            var response = await client.GetAsync(url).ConfigureAwait(true);
-            while (response.StatusCode == HttpStatusCode.Moved)
+            if (!Regex.IsMatch(videoId, "^[A-Za-z0-9_-]{11}$"))
             {
-                url = response.Headers.Location;
-                _logger.LogDebug("{Message}", "Received redirect to: " + url);
-                response = await client.GetAsync(url).ConfigureAwait(true);
+                throw new DataException("Invalid video ID.");
             }
 
-            _logger.LogDebug("{Message}", url + ": " + response.StatusCode);
-
-            if (response.IsSuccessStatusCode)
+            var result = await Read<Video>("api/video/" + videoId + "/", cancellationToken).ConfigureAwait(false);
+            if (result != null && (result.YoutubeId != videoId || string.IsNullOrWhiteSpace(result.Title)
+                || result.Published == default || result.Channel == null || string.IsNullOrWhiteSpace(result.Channel.Name) || result.Tags == null))
             {
-                string rawData = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                _logger.LogDebug("{Message}", rawData);
-                video = JsonConvert.DeserializeObject<Video>(rawData);
+                throw new DataException("Invalid video metadata.");
             }
 
-            return video;
-        }
-
-        /// <summary>
-        /// Validates connection and authentication to TubeArchivist.
-        /// </summary>
-        /// <returns>The ping response.</returns>
-        public async Task<PingResponse?> Ping()
-        {
-            PingResponse? pong = null;
-
-            var pingEndpoint = "/api/ping/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance!.Configuration.TubeArchivistUrl + pingEndpoint));
-            var response = await client.GetAsync(url).ConfigureAwait(true);
-
-            while (response.StatusCode == HttpStatusCode.Moved)
-            {
-                url = response.Headers.Location;
-                _logger.LogDebug("{Message}", "Received redirect to: " + url);
-                response = await client.GetAsync(url).ConfigureAwait(true);
-            }
-
-            _logger.LogDebug("{Message}", url + ": " + response.StatusCode);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string rawData = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                pong = JsonConvert.DeserializeObject<PingResponse>(rawData);
-            }
-
-            return pong;
-        }
-
-        /// <summary>
-        /// Sends video playback progress to TubeArchivist.
-        /// </summary>
-        /// <param name="videoId">Video id.</param>
-        /// <param name="progress">Progress in seconds.</param>
-        /// <returns>The response <see cref="HttpStatusCode"/>.</returns>
-        public async Task<HttpStatusCode> SetProgress(string videoId, long progress)
-        {
-            var progressEndpoint = $"/api/video/{videoId}/progress/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance!.Configuration.TubeArchivistUrl + progressEndpoint));
-            var body = JsonConvert.SerializeObject(new Progress(progress));
-
-            var response = await client.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).ConfigureAwait(true);
-
-            return response.StatusCode;
-        }
-
-        /// <summary>
-        /// Sends video playback progress to TubeArchivist.
-        /// </summary>
-        /// <param name="videoId">Video id.</param>
-        /// <returns>Video playback progress data.</returns>
-        public async Task<Progress?> GetProgress(string videoId)
-        {
-            Progress? progress = null;
-
-            var video = await GetVideo(videoId).ConfigureAwait(true);
-            if (video != null)
-            {
-                progress = new Progress((long)video.Player.Position);
-                _logger.LogDebug("{Message}", $"Retrieved progress {video.Player.Position}");
-            }
-
-            return progress;
-        }
-
-        /// <summary>
-        /// Sets video/channel/playlist as watched on TubeArchivist.
-        /// </summary>
-        /// <param name="itemId">Video/channel/playlist id.</param>
-        /// <param name="isWatched">Whether the item has been watched or not.</param>
-        /// <returns>The response <see cref="HttpStatusCode"/>.</returns>
-        public async Task<HttpStatusCode> SetWatchedStatus(string itemId, bool isWatched)
-        {
-            var watchedEndpoint = $"/api/watched/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance!.Configuration.TubeArchivistUrl + watchedEndpoint));
-            var body = JsonConvert.SerializeObject(new Watched(itemId, isWatched));
-
-            var response = await client.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).ConfigureAwait(true);
-
-            return response.StatusCode;
-        }
-
-        /// <summary>
-        /// Retrieves the playlists from TubeArchivist.
-        /// </summary>
-        /// <returns>A task.</returns>
-        public async Task<ISet<Playlist>?> GetPlaylists()
-        {
-            ResponseContainer<ISet<Playlist>?>? playlists = null;
-
-            var playlistsEndpoint = "/api/playlist/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance?.Configuration.TubeArchivistUrl + playlistsEndpoint));
-            var response = await client.GetAsync(url).ConfigureAwait(true);
-            while (response.StatusCode == HttpStatusCode.Moved)
-            {
-                url = response.Headers.Location;
-                _logger.LogInformation("{Message}", "Received redirect to: " + url);
-                response = await client.GetAsync(Utils.SanitizeUrl(Plugin.Instance?.Configuration.TubeArchivistUrl + url)).ConfigureAwait(true);
-            }
-
-            _logger.LogInformation("{Message}", url + ": " + response.StatusCode);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string rawData = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                playlists = JsonConvert.DeserializeObject<ResponseContainer<ISet<Playlist>?>>(rawData);
-                if (playlists?.Paginate != null)
-                {
-                    var lastPage = playlists.Paginate.LastPage;
-                    _logger.LogInformation("Pagination info: Current page {CurrentPage} / Last page {LastPage}, Total hits: {TotalHits}", playlists.Paginate.CurrentPage, playlists.Paginate.LastPage, playlists.Paginate.TotalHits);
-
-                    while (playlists.Paginate.CurrentPage < lastPage)
-                    {
-                        var nextPage = playlists.Paginate.CurrentPage + 1;
-                        var pagedUrl = new Uri(Utils.SanitizeUrl(Plugin.Instance?.Configuration.TubeArchivistUrl + playlistsEndpoint + "?page=" + nextPage));
-                        response = await client.GetAsync(pagedUrl).ConfigureAwait(true);
-                        while (response.StatusCode == HttpStatusCode.Moved)
-                        {
-                            url = response.Headers.Location;
-                            _logger.LogInformation("{Message}", "Received redirect to: " + url);
-                            response = await client.GetAsync(Utils.SanitizeUrl(Plugin.Instance?.Configuration.TubeArchivistUrl + url)).ConfigureAwait(true);
-                        }
-
-                        _logger.LogInformation("{Message}", pagedUrl + ": " + response.StatusCode);
-
-                        if (response.IsSuccessStatusCode)
-                        {
-                            rawData = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                            var nextPagePlaylists = JsonConvert.DeserializeObject<ResponseContainer<ISet<Playlist>?>>(rawData);
-                            if (nextPagePlaylists?.Data != null)
-                            {
-                                foreach (var playlist in nextPagePlaylists.Data)
-                                {
-                                    playlists.Data?.Add(playlist);
-                                }
-                            }
-
-                            if (nextPagePlaylists?.Paginate != null)
-                            {
-                                playlists.Paginate = nextPagePlaylists.Paginate;
-                                _logger.LogInformation("Pagination info: Current page {CurrentPage} / Last page {LastPage}, Total hits: {TotalHits}", playlists.Paginate.CurrentPage, playlists.Paginate.LastPage, playlists.Paginate.TotalHits);
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogCritical("Failed to retrieve page {PageNumber} of playlists during pagination.", nextPage);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return playlists?.Data;
-        }
-
-        /// <summary>
-        /// Creates a new custom playlist.
-        /// </summary>
-        /// <param name="creationRequest">Playlist creation request.</param>
-        /// <returns>The created <see cref="Playlist"/>.</returns>
-        public async Task<Playlist?> CreateCustomPlaylist(CustomPlaylistCreation creationRequest)
-        {
-            Playlist? playlist = null;
-            var customPlaylistEndpoint = $"/api/playlist/custom/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance!.Configuration.TubeArchivistUrl + customPlaylistEndpoint));
-            var body = JsonConvert.SerializeObject(creationRequest);
-            _logger.LogInformation("{Message}", body);
-
-            var response = await client.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).ConfigureAwait(true);
-            _logger.LogInformation("POST {Message}", url + ": " + response.StatusCode);
-
-            if (response.IsSuccessStatusCode)
-            {
-                string rawData = await response.Content.ReadAsStringAsync().ConfigureAwait(true);
-                playlist = JsonConvert.DeserializeObject<Playlist>(rawData);
-            }
-
-            return playlist;
-        }
-
-        /// <summary>
-        /// Creates a new custom playlist.
-        /// </summary>
-        /// <param name="playlistId">Playlist id.</param>
-        /// <param name="entryAction">Playlist creation request.</param>
-        /// <returns>The response <see cref="HttpStatusCode"/>.</returns>
-        public async Task<HttpStatusCode> CustomPlaylistEntryAction(string playlistId, CustomPlaylistEntryAction entryAction)
-        {
-            var customPlaylistEndpoint = $"/api/playlist/custom/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance!.Configuration.TubeArchivistUrl + customPlaylistEndpoint + playlistId));
-            var body = JsonConvert.SerializeObject(entryAction);
-            _logger.LogDebug("CustomPlaylistEntryAction body: {Message}", body);
-
-            var response = await client.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).ConfigureAwait(true);
-            _logger.LogDebug("Response code: {Message}", response.StatusCode);
-
-            return response.StatusCode;
-        }
-
-        /// <summary>
-        /// Deletes a playlist.
-        /// </summary>
-        /// <param name="playlistId">Playlist id.</param>
-        /// <returns>Whether the playlist has been deleted successfully or not.</returns>
-        public async Task<bool> DeletePlaylist(string playlistId)
-        {
-            var deletePlaylistEndpoint = $"/api/playlist/";
-            var url = new Uri(Utils.SanitizeUrl(Plugin.Instance!.Configuration.TubeArchivistUrl + deletePlaylistEndpoint + playlistId));
-            var response = await client.DeleteAsync(url).ConfigureAwait(true);
-            _logger.LogDebug("Response code: {Message}", response.StatusCode);
-
-            return response.StatusCode == HttpStatusCode.NoContent;
+            return result;
         }
     }
 }

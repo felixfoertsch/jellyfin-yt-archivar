@@ -15,7 +15,6 @@ using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
 {
@@ -61,7 +60,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             var list = new List<RemoteImageInfo>();
             var taApi = TubeArchivistApi.GetInstance();
             var videoTAId = Utils.GetVideoNameFromPath(item.Path);
-            var video = await taApi.GetVideo(videoTAId).ConfigureAwait(true);
+            var video = await taApi.GetVideo(videoTAId, cancellationToken).ConfigureAwait(true);
             _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting images for video: {0} ({1})", video?.Title, videoTAId));
             _logger.LogDebug("{Message}", "Thumb URI: " + video?.VidThumbUrl);
 
@@ -71,7 +70,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                 {
                     ProviderName = Name,
                     Type = ImageType.Primary,
-                    Url = video.VidThumbUrl
+                    Url = taApi.NormalizeImage(video.VidThumbUrl)
                 });
             }
 
@@ -92,7 +91,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                     throw new HttpRequestException("TubeArchivist returned an empty image URL.");
                 }
 
-                return await Plugin.Instance.HttpClient.GetAsync(new Uri(Utils.SanitizeUrl(Plugin.Instance.Configuration.TubeArchivistUrl + url).TrimEnd('/')), cancellationToken).ConfigureAwait(false);
+                return await TubeArchivistApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
             }
         }
     }

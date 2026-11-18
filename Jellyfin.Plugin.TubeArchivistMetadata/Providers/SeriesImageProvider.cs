@@ -59,7 +59,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
             var list = new List<RemoteImageInfo>();
             var taApi = TubeArchivistApi.GetInstance();
             var channelTAId = Utils.GetChannelNameFromPath(item.Path);
-            var channel = await taApi.GetChannel(channelTAId).ConfigureAwait(true);
+            var channel = await taApi.GetChannel(channelTAId, cancellationToken).ConfigureAwait(true);
             _logger.LogDebug("{Message}", string.Format(CultureInfo.CurrentCulture, "Getting images for channel: {0} ({1})", channel?.Name, channelTAId));
             _logger.LogDebug("{Message}", "Thumb URI: " + channel?.ThumbUrl);
 
@@ -69,7 +69,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                 {
                     ProviderName = Name,
                     Type = ImageType.Primary,
-                    Url = channel.ThumbUrl
+                    Url = taApi.NormalizeImage(channel.ThumbUrl)
                 });
             }
 
@@ -79,14 +79,14 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                 {
                     ProviderName = Name,
                     Type = ImageType.Art,
-                    Url = channel.TvartUrl
+                    Url = taApi.NormalizeImage(channel.TvartUrl)
                 });
 
                 list.Add(new RemoteImageInfo
                 {
                     ProviderName = Name,
                     Type = ImageType.Backdrop,
-                    Url = channel.TvartUrl
+                    Url = taApi.NormalizeImage(channel.TvartUrl)
                 });
             }
 
@@ -96,7 +96,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                 {
                     ProviderName = Name,
                     Type = ImageType.Banner,
-                    Url = channel.BannerUrl
+                    Url = taApi.NormalizeImage(channel.BannerUrl)
                 });
             }
 
@@ -117,7 +117,7 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Providers
                     throw new HttpRequestException("TubeArchivist returned an empty image URL.");
                 }
 
-                return await Plugin.Instance.HttpClient.GetAsync(new Uri(Utils.SanitizeUrl(Plugin.Instance.Configuration.TubeArchivistUrl + url).TrimEnd('/')), cancellationToken).ConfigureAwait(false);
+                return await TubeArchivistApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
             }
         }
     }

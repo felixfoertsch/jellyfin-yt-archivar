@@ -118,16 +118,6 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.TubeArchivist
                         Constants.ProviderName, Id
                     }
                 },
-                ImageInfos = Utils.HasImageUrl(ThumbUrl) ?
-                [
-                    new ItemImageInfo
-                    {
-                        Path = ThumbUrl,
-                        Type = ImageType.Primary
-                    }
-
-                ] :
-                [],
                 Tags = this.Tags != null ?
                     this.Tags.ToArray<string>() :
                     []

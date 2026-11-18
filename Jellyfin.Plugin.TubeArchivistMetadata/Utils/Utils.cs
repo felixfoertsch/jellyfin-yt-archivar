@@ -10,10 +10,6 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
     /// </summary>
     public static class Utils
     {
-        private const string TAPlaylistIdRegex = @"^(.*)\((.*)\)$";
-        private const string YTTAPlaylistNameFormatRegex = @"^(.*)\s\-\s(.*)\s\((.*)\)$";
-        private const string TAPlaylistNameFormatRegex = @"^(.*)\s\((.*)\)$";
-
         /// <summary>
         /// Sanitizes the given URL.
         /// </summary>
@@ -152,6 +148,20 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
             return !string.IsNullOrWhiteSpace(url);
         }
 
+        /// <summary>Checks a metadata path against its indexed library item.</summary>
+        /// <param name="path">Media path.</param>
+        /// <returns>Whether it belongs to the configured library.</returns>
+        public static bool IsTubeArchivistPath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || Plugin.Instance == null)
+            {
+                return false;
+            }
+
+            var item = Plugin.Instance.LibraryManager.FindByPath(path, false);
+            return item != null && IsTubeArchivistItem(item);
+        }
+
         private static char DetectDirectorySeparator(string path)
         {
             int backslashCount = path.Count(c => c == '\\');
@@ -165,36 +175,6 @@ namespace Jellyfin.Plugin.TubeArchivistMetadata.Utilities
             {
                 return '/'; // Unix directory separator
             }
-        }
-
-        /// <summary>
-        /// Gets the TubeArchivist playlist id from Jellyfin playlist name.
-        /// </summary>
-        /// <param name="playlistName">The Jellyfin playlist name.</param>
-        /// <returns>The TubeArchvist playlist id.</returns>
-        public static string? GetTAPlaylistIdFromName(string playlistName)
-        {
-            var regex = new Regex(TAPlaylistIdRegex);
-            return regex.Match(playlistName).Groups[2].ToString();
-        }
-
-        /// <summary>
-        /// Gets the TubeArchivist playlist name from Jellyfin playlist name.
-        /// </summary>
-        /// <param name="playlistName">The Jellyfin playlist name.</param>
-        /// <returns>The TubeArchivist playlist name.</returns>
-        public static string? GetTAPlaylistNameFromName(string playlistName)
-        {
-            var ytRegex = new Regex(YTTAPlaylistNameFormatRegex);
-            var regex = new Regex(TAPlaylistNameFormatRegex);
-
-            var name = ytRegex.Match(playlistName).Groups[1].ToString();
-            if (string.IsNullOrEmpty(name))
-            {
-                name = regex.Match(playlistName).Groups[1].ToString();
-            }
-
-            return name;
         }
     }
 }
