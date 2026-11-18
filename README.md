@@ -29,18 +29,14 @@ python3 scripts/release.py verify "$EDGE_TAG" "$GITHUB_SHA" artifacts
 
 Private main pushes publish immutable Gitea `vYYYY.MM.DD.N` edge releases through a separate publisher. ZIP assemblies retain four numeric version components `1.5.<run quotient>.<run remainder>` (base 65535). `build.json` records the exact source revision and SHA-256 of ZIP/catalog artifacts; Jellyfin catalog entries use the ZIP's required MD5 checksum. Historical source manifest entries and release assets are not rewritten.
 
-## Catalog handoff to Felix
+## Install from the public Jellyfin catalog
 
-Each private release supplies `tubearchivistmetadata.zip`, private `manifest.json`, public-mirror-ready `catalog.json` and `build.json`. Felix copies the generated **catalog.json** to the lasting public path:
+Add this repository URL under Jellyfin Dashboard → Plugins → Repositories:
 
-`https://raw.githubusercontent.com/felixfoertsch/tubearchivist-jellyfin-plugin/main/manifest.json`
+`https://raw.githubusercontent.com/felixfoertsch/tubearchivist-jellyfin-plugin/jellyfin-catalog/manifest.json`
 
-The consumer catalog expects the unchanged ZIP at:
+Install TubeArchivistMetadata from the catalog and restart when Jellyfin requests it. Updates use the same URL. After publishing each private edge release, the Gitea workflow updates the generated catalog branch. The scheduled mirror copies the branch and release assets separately, without running GitHub Actions. The manifest or ZIP may be temporarily unavailable during replication; retry after the mirror finishes.
 
-`https://github.com/felixfoertsch/tubearchivist-jellyfin-plugin/releases/download/<edge-tag>/tubearchivistmetadata.zip`
+Private Gitea releases retain `manifest.json` for existing consumers alongside `catalog.json`, `tubearchivistmetadata.zip` and `build.json`. Publication does not install, restart or change any consumer pin.
 
-The catalog image uses the corresponding source commit under that mirror. These are expected handoff paths, not claims that files are publicly hosted or anonymously verified. Gitea remains authoritative; the agent does not configure or publish to GitHub.
-
-After Felix exposes those artifacts, add the lasting catalog URL under Jellyfin Dashboard → Plugins → Repositories, install TubeArchivistMetadata from the catalog, then perform the restart Jellyfin requests. Updates use the same catalog. No automatic installation, restart or consumer pin change is performed by private publication.
-
-Before an upgrade, securely back up the plugin directory/configuration and retain the prior immutable ZIP/catalog/version. To roll back, stop Jellyfin and restore that prior plugin/configuration, then restart. Older versions may contain synchronization: disable their sync settings before using them. Do not reset user history or playlists as a rollback step. Felix performs all installation/restarts and live checks.
+Before an upgrade, securely back up the plugin directory/configuration and retain the prior immutable ZIP/catalog/version. To roll back, stop Jellyfin and restore that prior plugin/configuration, then restart. Older versions may contain synchronization: disable their sync settings before using them. Do not reset user history or playlists as a rollback step. Felix performs installation and restarts on his own server.

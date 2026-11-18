@@ -49,6 +49,8 @@ with tempfile.TemporaryDirectory() as temp:
 	from unittest.mock import patch
 	import io
 	import urllib.error
+	import base64
+	env = dict(GITHUB_REPOSITORY=release.REPO, GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITEA_TOKEN='test')
 	urls = []
 	def fake_open(request, timeout):
 		url = request.full_url
@@ -66,9 +68,33 @@ with tempfile.TemporaryDirectory() as temp:
 		if request.get_method() == 'PATCH':
 			return io.BytesIO(b'{}')
 		raise AssertionError(url)
-	with patch.dict(release.os.environ, GITHUB_REPOSITORY=release.REPO, GITHUB_REF='refs/heads/main', GITHUB_EVENT_NAME='push', GITEA_TOKEN='test'), patch.object(release.HTTP, 'open', side_effect=fake_open):
+	with patch.dict(release.os.environ, env), patch.object(release.HTTP, 'open', side_effect=fake_open):
 		release.publish(directory, tag, sha)
 	assert all(url.startswith('https://foerge.de/') for url in urls)
+	catalog = (directory / 'catalog.json').read_bytes()
+	path = f'https://foerge.de/api/v1/repos/{release.REPO}/contents/manifest.json'
+	for previous in (None, '1.5.0.99', '1.5.0.123', '1.5.1.0'):
+		missing = urllib.error.HTTPError(path + '?ref=jellyfin-catalog', 404, 'Not Found', {}, None)
+		if previous is None:
+			responses = [missing, io.BytesIO(b'{"sha":"main-blob"}'), io.BytesIO(b'{}')]
+		else:
+			old = [dict(consumer, versions=[dict(consumer['versions'][0], version=previous)])]
+			current = dict(sha='catalog-blob', content=base64.b64encode(json.dumps(old).encode()).decode())
+			responses = [io.BytesIO(json.dumps(current).encode()), io.BytesIO(b'{}')]
+		with patch.dict(release.os.environ, env), patch.object(release.HTTP, 'open', side_effect=responses) as api:
+			release.publish_catalog(directory, tag, sha)
+		requests = [(call.args[0].get_method(), call.args[0].full_url) for call in api.call_args_list]
+		expected = [('GET', path + '?ref=jellyfin-catalog')]
+		if previous in ('1.5.0.123', '1.5.1.0'):
+			assert requests == expected, previous
+			continue
+		if previous is None:
+			expected.append(('GET', path + '?ref=main'))
+		assert requests == expected + [('PUT', path)], previous
+		payload = json.loads(api.call_args.args[0].data)
+		assert (payload['branch'], payload.get('new_branch'), payload['sha']) == (
+			('main', 'jellyfin-catalog', 'main-blob') if previous is None else ('jellyfin-catalog', None, 'catalog-blob'))
+		assert base64.b64decode(payload['content']) == catalog
 	for field, value in [('channel', 'stable'), ('sourceRevision', 'b' * 40)]:
 		changed = dict(metadata, **{field: value})
 		(directory / 'build.json').write_text(json.dumps(changed))
