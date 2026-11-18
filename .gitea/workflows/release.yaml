@@ -59,7 +59,7 @@ jobs:
 
   publish:
     timeout-minutes: 15
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'felixfoertsch/tubearchivist-jellyfin-plugin'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'felixfoertsch/jellyfin-yt-archivar'
     needs: build
     runs-on: linux-builder
     container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521
@@ -86,7 +86,7 @@ jobs:
   # Keep repository writes out of the release publisher's token.
   catalog:
     timeout-minutes: 5
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'felixfoertsch/tubearchivist-jellyfin-plugin'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'felixfoertsch/jellyfin-yt-archivar'
     needs: [build, publish]
     runs-on: linux-builder
     container: gitea/runner-images@sha256:0e62e56b382ebf485bff1e51a05cbe27c708545a2e91425467fd31eb3e249521

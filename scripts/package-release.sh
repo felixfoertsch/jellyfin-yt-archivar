@@ -24,7 +24,7 @@ main() {
 	mkdir -p "$output_dir"
 
 	local zip_path
-	zip_path="$output_dir/tubearchivistmetadata_${version}.zip"
+	zip_path="$output_dir/jellyfin-yt-archivar_${version}.zip"
 	rm -f "$zip_path"
 
 	local package_dir

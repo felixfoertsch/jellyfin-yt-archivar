@@ -1,6 +1,6 @@
-# Jellyfin TubeArchivist Plugin
+# YouTube Archivar for Jellyfin
 
-Maintained by [felixfoertsch](https://foerge.de/felixfoertsch/tubearchivist-jellyfin-plugin) for the maintained PostgreSQL TubeArchivist fork. [Fork support](https://foerge.de/felixfoertsch/tubearchivist-jellyfin-plugin/issues). Original work by DarkFighterLuke and the upstream TubeArchivist plugin remains attributed; LICENSE is preserved.
+Maintained by [felixfoertsch](https://foerge.de/felixfoertsch/jellyfin-yt-archivar) for YouTube Archivar, the PostgreSQL fork of TubeArchivist. [Fork support](https://foerge.de/felixfoertsch/jellyfin-yt-archivar/issues). Original work by DarkFighterLuke and the upstream TubeArchivist plugin remains attributed; LICENSE is preserved.
 
 ## Metadata only
 
@@ -8,7 +8,7 @@ TubeArchivist channels become shows, videos become episodes, and publication yea
 
 There are no progress/watched or playlist synchronization tasks, event handlers, startup actions or controls. Legacy sync flags/usernames/intervals are ignored and cannot reactivate synchronization. The plugin does not change existing history, playlists, playlist order, subscriptions, retention or media. Watch progress lives in Jellyfin. No account linking is needed.
 
-The name `TubeArchivistMetadata`, GUID `dc97d0c6-28b0-4242-afb4-5833ae1b3715`, URL/key/library/overview/numbering settings and historical catalog versions remain intact. Scope providers to the configured TubeArchivist library; mount its media read-only using the channel/video filesystem layout. Configure the library as Shows and enable TubeArchivist metadata/image providers; disable competing providers if unwanted. Seasons derive from episode publication years, not a separate season provider.
+The plugin keeps its GUID `dc97d0c6-28b0-4242-afb4-5833ae1b3715`, URL/key/library/overview/numbering settings and historical catalog versions. Scope providers to the configured TubeArchivist library; mount its media read-only using the channel/video filesystem layout. Configure the library as Shows and enable TubeArchivist metadata/image providers; disable competing providers if unwanted. Seasons derive from episode publication years, not a separate season provider.
 
 ## Connection and safety
 
@@ -33,10 +33,10 @@ Private main pushes publish immutable Gitea `vYYYY.MM.DD.N` edge releases throug
 
 Add this repository URL under Jellyfin Dashboard → Plugins → Repositories:
 
-`https://raw.githubusercontent.com/felixfoertsch/tubearchivist-jellyfin-plugin/jellyfin-catalog/manifest.json`
+`https://raw.githubusercontent.com/felixfoertsch/jellyfin-yt-archivar/jellyfin-catalog/manifest.json`
 
-Install TubeArchivistMetadata from the catalog and restart when Jellyfin requests it. Updates use the same URL. After publishing each private edge release, the Gitea workflow updates the generated catalog branch. The scheduled mirror copies the branch and release assets separately, without running GitHub Actions. The manifest or ZIP may be temporarily unavailable during replication; retry after the mirror finishes.
+Install YouTube Archivar from the catalog and restart when Jellyfin requests it. Updates use the same URL. After publishing each private edge release, the Gitea workflow updates the generated catalog branch. The scheduled mirror copies the branch and release assets separately, without running GitHub Actions. The manifest or ZIP may be temporarily unavailable during replication; retry after the mirror finishes.
 
-Private Gitea releases retain `manifest.json` for existing consumers alongside `catalog.json`, `tubearchivistmetadata.zip` and `build.json`. Publication does not install, restart or change any consumer pin.
+Private Gitea releases retain `manifest.json` for existing consumers alongside `catalog.json`, `jellyfin-yt-archivar.zip` and `build.json`. Publication does not install, restart or change any consumer pin.
 
 Before an upgrade, securely back up the plugin directory/configuration and retain the prior immutable ZIP/catalog/version. To roll back, stop Jellyfin and restore that prior plugin/configuration, then restart. Older versions may contain synchronization: disable their sync settings before using them. Do not reset user history or playlists as a rollback step. Felix performs installation and restarts on his own server.

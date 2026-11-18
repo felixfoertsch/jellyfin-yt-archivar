@@ -2,11 +2,11 @@
     {
         "category": "Metadata",
         "guid": "dc97d0c6-28b0-4242-afb4-5833ae1b3715",
-        "name": "TubeArchivistMetadata",
-        "description": "TubeArchivistMetadata is a plugin that automatically manages metadata for videos downloaded with TubeArchivist from YouTube.\n",
+        "name": "YouTube Archivar",
+        "description": "YouTube Archivar is a plugin that automatically manages metadata for videos downloaded with YouTube Archivar.\n",
         "owner": "DarkFighterLuke",
-        "overview": "Metadata for your TubeArchivist library on Jellyfin",
-        "imageUrl": "https://foerge.de/felixfoertsch/tubearchivist-jellyfin-plugin/raw/branch/main/images/logo.png",
+        "overview": "Metadata for your YouTube Archivar library on Jellyfin",
+        "imageUrl": "https://foerge.de/felixfoertsch/jellyfin-yt-archivar/raw/branch/main/images/logo.png",
         "versions": [
             {
                 "version": "1.4.5.0",

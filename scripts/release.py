@@ -13,8 +13,8 @@ import urllib.error
 import urllib.request
 import zipfile
 
-ASSET = 'tubearchivistmetadata.zip'
-REPO = 'felixfoertsch/tubearchivist-jellyfin-plugin'
+ASSET = 'jellyfin-yt-archivar.zip'
+REPO = 'felixfoertsch/jellyfin-yt-archivar'
 BASE = 'https://foerge.de/' + REPO
 PUBLIC = 'https://github.com/' + REPO
 
