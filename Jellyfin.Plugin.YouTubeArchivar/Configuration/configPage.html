@@ -23,15 +23,15 @@
                         <div class="fieldDescription">YouTube Archivar collection display name</div>
                     </div>
                     <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="TubeArchivistUrl">YouTube Archivar URL</label>
-                        <input id="TubeArchivistUrl" name="TubeArchivistUrl" type="text" is="emby-input"
+                        <label class="inputLabel inputLabelUnfocused" for="ServerUrl">YouTube Archivar URL</label>
+                        <input id="ServerUrl" name="ServerUrl" type="text" is="emby-input"
                             placeholder="http://..." />
                         <div class="fieldDescription">YouTube Archivar URL</div>
                     </div>
                     <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="TubeArchivistApiKey">YouTube Archivar API
+                        <label class="inputLabel inputLabelUnfocused" for="ApiKey">YouTube Archivar API
                             key</label>
-                        <input id="TubeArchivistApiKey" name="TubeArchivistApiKey" type="password" is="emby-input" />
+                        <input id="ApiKey" name="ApiKey" type="password" is="emby-input" />
                         <div class="fieldDescription">YouTube Archivar API key</div>
                     </div>
                     <div class="inputContainer">
@@ -73,8 +73,8 @@
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(YouTubeArchivarConfig.pluginUniqueId).then(function (config) {
                         document.querySelector('#CollectionTitle').value = config.CollectionTitle;
-                        document.querySelector('#TubeArchivistUrl').value = config.TubeArchivistUrl;
-                        document.querySelector('#TubeArchivistApiKey').value = config.TubeArchivistApiKey;
+                        document.querySelector('#ServerUrl').value = config.ServerUrl;
+                        document.querySelector('#ApiKey').value = config.ApiKey;
                         document.querySelector('#MaxDescriptionLength').value = config.MaxDescriptionLength;
                         document.querySelector('#EpisodeNumberingScheme').value = config.EpisodeNumberingScheme;
                         Dashboard.hideLoadingMsg();
@@ -86,8 +86,8 @@
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(YouTubeArchivarConfig.pluginUniqueId).then(function (config) {
                         config.CollectionTitle = document.querySelector('#CollectionTitle').value;
-                        config.TubeArchivistUrl = document.querySelector('#TubeArchivistUrl').value;
-                        config.TubeArchivistApiKey = document.querySelector('#TubeArchivistApiKey').value;
+                        config.ServerUrl = document.querySelector('#ServerUrl').value;
+                        config.ApiKey = document.querySelector('#ApiKey').value;
                         config.MaxDescriptionLength = document.querySelector('#MaxDescriptionLength').value;
                         config.EpisodeNumberingScheme = document.querySelector('#EpisodeNumberingScheme').value;
                         ApiClient.updatePluginConfiguration(YouTubeArchivarConfig.pluginUniqueId, config).then(function (result) {

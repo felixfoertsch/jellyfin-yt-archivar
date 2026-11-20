@@ -10,23 +10,23 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.Server
 {
     /// <summary>Read-only client with a captured destination and credential.</summary>
-    public class TubeArchivistApi
+    public class ServerApi
     {
         private readonly HttpClient _client;
         private readonly Uri _base;
         private readonly string _token;
         private readonly string _configuredUrl;
 
-        /// <summary>Initializes a new instance of the <see cref="TubeArchivistApi"/> class.</summary>
+        /// <summary>Initializes a new instance of the <see cref="ServerApi"/> class.</summary>
         /// <param name="httpClient">Redirect-disabled HTTP client.</param>
-        public TubeArchivistApi(HttpClient httpClient)
+        public ServerApi(HttpClient httpClient)
         {
             _client = httpClient;
             var config = Plugin.Instance!.Configuration;
-            _configuredUrl = config.TubeArchivistUrl;
+            _configuredUrl = config.ServerUrl;
             var value = _configuredUrl.Trim();
             if (!value.Contains("://", StringComparison.Ordinal))
             {
@@ -41,21 +41,21 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
             }
 
             _base = url;
-            _token = config.TubeArchivistApiKey;
+            _token = config.ApiKey;
             if (string.IsNullOrWhiteSpace(_token))
             {
-                throw new DataException("Configure a TubeArchivist API token.");
+                throw new DataException("Configure a server API key.");
             }
         }
 
         /// <summary>Creates a client for the current settings.</summary>
         /// <returns>The client.</returns>
-        public static TubeArchivistApi GetInstance() => new TubeArchivistApi(Plugin.Instance!.HttpClient);
+        public static ServerApi GetInstance() => new ServerApi(Plugin.Instance!.HttpClient);
 
         private void EnsureCurrent()
         {
             var config = Plugin.Instance!.Configuration;
-            if (config.TubeArchivistUrl != _configuredUrl || config.TubeArchivistApiKey != _token)
+            if (config.ServerUrl != _configuredUrl || config.ApiKey != _token)
             {
                 throw new DataException("Connection changed; response discarded.");
             }

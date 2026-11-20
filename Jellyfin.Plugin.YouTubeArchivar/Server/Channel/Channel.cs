@@ -8,10 +8,10 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Newtonsoft.Json;
 
-namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.Server
 {
     /// <summary>
-    /// A class representing TubeArchivist API channel data.
+    /// A class representing server API channel data.
     /// </summary>
     public class Channel
     {
@@ -87,7 +87,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
         public string TvartUrl { get; set; }
 
         /// <summary>
-        /// Converts the TubeArchivist API channel to a Jellyfin <see cref="RemoteSearchResult"/> object.
+        /// Converts the server API channel to a Jellyfin <see cref="RemoteSearchResult"/> object.
         /// </summary>
         /// <returns>The channel equivalent Jellyfin <see cref="RemoteSearchResult"/> object.</returns>
         public RemoteSearchResult ToSearchResult()
@@ -102,7 +102,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
         }
 
         /// <summary>
-        /// Converts the TubeArchivist API channel to a Jellyfin <see cref="Series"/> object.
+        /// Converts the server API channel to a Jellyfin <see cref="Series"/> object.
         /// </summary>
         /// <returns>The channel equivalent Jellyfin <see cref="Series"/> object.</returns>
         public Series ToSeries()

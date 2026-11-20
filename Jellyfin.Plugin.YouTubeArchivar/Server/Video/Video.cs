@@ -11,10 +11,10 @@ using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
 using Newtonsoft.Json;
 
-namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.Server
 {
     /// <summary>
-    /// A class representing TubeArchivist API video data.
+    /// A class representing server API video data.
     /// </summary>
     public class Video
     {
@@ -90,7 +90,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
         public string YoutubeId { get; set; }
 
         /// <summary>
-        /// Converts the TubeArchivist API video to a Jellyfin <see cref="RemoteSearchResult"/> object.
+        /// Converts the server API video to a Jellyfin <see cref="RemoteSearchResult"/> object.
         /// </summary>
         /// <returns>The video equivalent Jellyfin <see cref="RemoteSearchResult"/> object.</returns>
         public RemoteSearchResult ToSearchResult()
@@ -107,7 +107,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
         }
 
         /// <summary>
-        /// Converts the TubeArchivist API video to a Jellyfin <see cref="Episode"/> object.
+        /// Converts the server API video to a Jellyfin <see cref="Episode"/> object.
         /// </summary>
         /// <returns>The video equivalent Jellyfin <see cref="Episode"/> object.</returns>
         public Episode ToEpisode()

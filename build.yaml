@@ -10,7 +10,7 @@ description: >
   YouTube Archivar is a plugin that automatically manages
   metadata for videos downloaded with YouTube Archivar.
 category: "Metadata"
-owner: "felixfoertsch (upstream: DarkFighterLuke)"
+owner: "felixfoertsch"
 artifacts:
 - "Jellyfin.Plugin.YouTubeArchivar.dll"
 changelog: >

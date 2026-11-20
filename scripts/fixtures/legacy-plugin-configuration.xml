@@ -1,0 +1,8 @@
+<!-- Jellyfin XML written before the settings rename, with synthetic values. -->
+<PluginConfiguration>
+    <CollectionTitle>YouTube</CollectionTitle>
+    <TubeArchivistUrl>https://example.com/archive</TubeArchivistUrl>
+    <TubeArchivistApiKey>fixture</TubeArchivistApiKey>
+    <MaxDescriptionLength>300</MaxDescriptionLength>
+    <EpisodeNumberingScheme>YYYYMMDD</EpisodeNumberingScheme>
+</PluginConfiguration>

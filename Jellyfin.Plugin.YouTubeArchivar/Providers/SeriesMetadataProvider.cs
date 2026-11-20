@@ -5,7 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.YouTubeArchivar.TubeArchivist;
+using Jellyfin.Plugin.YouTubeArchivar.Server;
 using Jellyfin.Plugin.YouTubeArchivar.Utilities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.YouTubeArchivar.Providers
 {
     /// <summary>
-    /// Metadata provider which interacts with TubeArchivist library.
+    /// Metadata provider for the configured archive library.
     /// </summary>
     public class SeriesMetadataProvider : IRemoteMetadataProvider<Series, SeriesInfo>
     {
@@ -47,17 +47,17 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)
         {
             var result = new MetadataResult<Series>();
-            if (!Utils.IsTubeArchivistPath(info.Path, isFolder: true))
+            if (!Utils.IsArchivePath(info.Path, isFolder: true))
             {
                 return result;
             }
 
-            var taApi = TubeArchivistApi.GetInstance();
-            var channelTAId = Utils.GetChannelNameFromPath(info.Path);
-            var channel = await taApi.GetChannel(channelTAId, cancellationToken).ConfigureAwait(true);
+            var serverApi = ServerApi.GetInstance();
+            var channelId = Utils.GetChannelNameFromPath(info.Path);
+            var channel = await serverApi.GetChannel(channelId, cancellationToken).ConfigureAwait(true);
             if (_logger.IsEnabled(LogLevel.Debug))
             {
-                _logger.LogDebug("Getting metadata for channel: {Title} ({Id})", channel?.Name, channelTAId);
+                _logger.LogDebug("Getting metadata for channel: {Title} ({Id})", channel?.Name, channelId);
             }
 
             if (channel != null)
@@ -92,18 +92,18 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         public async Task<IEnumerable<RemoteSearchResult>> GetSearchResults(SeriesInfo searchInfo, CancellationToken cancellationToken)
         {
             var results = new List<RemoteSearchResult>();
-            if (!Utils.IsTubeArchivistPath(searchInfo.Path, isFolder: true))
+            if (!Utils.IsArchivePath(searchInfo.Path, isFolder: true))
             {
                 return results;
             }
 
-            var taApi = TubeArchivistApi.GetInstance();
-            var channelTAId = Utils.GetChannelNameFromPath(searchInfo.Path);
-            var channel = await taApi.GetChannel(channelTAId, cancellationToken).ConfigureAwait(true);
+            var serverApi = ServerApi.GetInstance();
+            var channelId = Utils.GetChannelNameFromPath(searchInfo.Path);
+            var channel = await serverApi.GetChannel(channelId, cancellationToken).ConfigureAwait(true);
             if (channel != null)
             {
                 var entry = channel.ToSearchResult();
-                entry.ImageUrl = Utils.HasImageUrl(entry.ImageUrl) ? taApi.NormalizeImage(entry.ImageUrl) : null;
+                entry.ImageUrl = Utils.HasImageUrl(entry.ImageUrl) ? serverApi.NormalizeImage(entry.ImageUrl) : null;
                 results.Add(entry);
             }
 
@@ -119,7 +119,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
             }
             else
             {
-                return await TubeArchivistApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
+                return await ServerApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
             }
         }
     }

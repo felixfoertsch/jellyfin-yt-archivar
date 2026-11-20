@@ -45,6 +45,7 @@ jobs:
           echo "DOTNET_ROOT=$RUNNER_TEMP/dotnet" >> "$GITHUB_ENV"
           "$RUNNER_TEMP/dotnet/dotnet" --version
       - run: python3 scripts/test-release.py
+      - run: dotnet run --file scripts/test-configuration.cs -c Release
       - id: identity
         run: echo "tag=v$(date -u +%Y.%m.%d).$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
       - run: python3 scripts/release.py build "$EDGE_TAG" "$GITHUB_SHA" artifacts

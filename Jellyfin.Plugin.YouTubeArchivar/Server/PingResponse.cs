@@ -1,9 +1,9 @@
 using Newtonsoft.Json;
 
-namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.Server
 {
     /// <summary>
-    /// A class representing TubeArchivist API ping response data.
+    /// A class representing server API ping response data.
     /// </summary>
     public class PingResponse
     {
@@ -11,8 +11,8 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
         /// Initializes a new instance of the <see cref="PingResponse"/> class.
         /// </summary>
         /// <param name="response">Response from the API ("pong").</param>
-        /// <param name="user">TubeArchivist user id.</param>
-        /// <param name="version">TubeArchivist version.</param>
+        /// <param name="user">Server user ID.</param>
+        /// <param name="version">Server version.</param>
         public PingResponse(
             string response,
             int user,
@@ -36,7 +36,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
         public int User { get; }
 
         /// <summary>
-        /// Gets TubeArchivist version.
+        /// Gets server version.
         /// </summary>
         [JsonProperty(PropertyName = "version")]
         public string Version { get; }

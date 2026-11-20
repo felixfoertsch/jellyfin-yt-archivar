@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Jellyfin.Plugin.YouTubeArchivar.TubeArchivist
+namespace Jellyfin.Plugin.YouTubeArchivar.Server
 {
     /// <summary>
     /// Custom JsonConverter to handle tags list that could be null.

@@ -124,11 +124,11 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
         }
 
         /// <summary>
-        /// Checks whether the Jellyfin item belongs to the configured TubeArchivist collection.
+        /// Checks whether the Jellyfin item belongs to the configured archive collection.
         /// </summary>
         /// <param name="item">Jellyfin item.</param>
-        /// <returns>True when the item belongs to the configured TubeArchivist collection.</returns>
-        public static bool IsTubeArchivistItem(BaseItem item)
+        /// <returns>True when the item belongs to the configured archive collection.</returns>
+        public static bool IsArchiveItem(BaseItem item)
         {
             var plugin = Plugin.Instance;
             if (string.IsNullOrWhiteSpace(plugin?.Configuration.CollectionTitle))
@@ -141,9 +141,9 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
         }
 
         /// <summary>
-        /// Checks whether a TubeArchivist image URL can be fetched safely.
+        /// Checks whether a server image URL can be fetched safely.
         /// </summary>
-        /// <param name="url">Image URL returned by TubeArchivist.</param>
+        /// <param name="url">Image URL returned by the server.</param>
         /// <returns>True when the image URL is non-empty.</returns>
         public static bool HasImageUrl([NotNullWhen(true)] string? url)
         {
@@ -154,7 +154,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
         /// <param name="path">Media path.</param>
         /// <param name="isFolder">Whether to look up a series directory or an episode file.</param>
         /// <returns>Whether it belongs to the configured library.</returns>
-        public static bool IsTubeArchivistPath(string path, bool isFolder)
+        public static bool IsArchivePath(string path, bool isFolder)
         {
             if (string.IsNullOrWhiteSpace(path) || Plugin.Instance == null)
             {
@@ -162,7 +162,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Utilities
             }
 
             var item = Plugin.Instance.LibraryManager.FindByPath(path, isFolder);
-            return item != null && IsTubeArchivistItem(item);
+            return item != null && IsArchiveItem(item);
         }
 
         private static char DetectDirectorySeparator(string path)

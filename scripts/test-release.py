@@ -9,8 +9,9 @@ import release
 
 sha = 'a' * 40
 tag = 'v2026.11.16.123'
-plugin, legacy = json.loads(Path('manifest.json').read_text())
-assert plugin['guid'] != legacy['guid'] and not plugin['versions'] and legacy['versions']
+plugin, = json.loads(Path('manifest.json').read_text())
+assert plugin['name'] == 'YouTube Archivar' and plugin['owner'] == 'felixfoertsch'
+assert plugin['versions'] == []
 for path in ['build.yaml', 'Jellyfin.Plugin.YouTubeArchivar/Constants.cs',
 	'Jellyfin.Plugin.YouTubeArchivar/Configuration/configPage.html']:
 	assert plugin['guid'] in Path(path).read_text(), path
@@ -134,11 +135,11 @@ for path in sources:
  text = path.read_text()
  assert not any(value in text for value in ['PlaybackProgress +=', 'UserDataSaved +=', 'IScheduledTask', 'SetProgress(', 'SetWatchedStatus(', 'HttpMethod.Post', 'HttpMethod.Delete']), path
 assert not list((root / 'Jellyfin.Plugin.YouTubeArchivar/Tasks').glob('*.cs'))
-assert 'ParentIndexNumber = Published.Year' in (root / 'Jellyfin.Plugin.YouTubeArchivar/TubeArchivist/Video/Video.cs').read_text()
+assert 'ParentIndexNumber = Published.Year' in (root / 'Jellyfin.Plugin.YouTubeArchivar/Server/Video/Video.cs').read_text()
 print('metadata-only source safeguards passed')
 
 # Guard the real client/provider seams without adding a compatibility environment.
-api = (root / 'Jellyfin.Plugin.YouTubeArchivar/TubeArchivist/TubeArchivistApi.cs').read_text()
+api = (root / 'Jellyfin.Plugin.YouTubeArchivar/Server/ServerApi.cs').read_text()
 assert "path.Contains('%', StringComparison.Ordinal)" in api
 assert 'Unknown artwork route.' in api and 'Ambiguous artwork path.' in api
 assert 'description == null' in api and 'JTokenType.Null' in api
@@ -146,6 +147,6 @@ assert 'tags == null ? typeof(T) == typeof(Video)' in api
 for name in ['Episode', 'Series']:
  provider = (root / f'Jellyfin.Plugin.YouTubeArchivar/Providers/{name}MetadataProvider.cs').read_text()
  assert 'ImageUrl = video.Channel' not in provider and 'ImageUrl = channel.ThumbUrl' not in provider
- assert 'taApi.NormalizeImage(entry.ImageUrl)' in provider
+ assert 'serverApi.NormalizeImage(entry.ImageUrl)' in provider
 assert 'result.Item.Tags = existing.Tags;' in (root / 'Jellyfin.Plugin.YouTubeArchivar/Providers/SeriesMetadataProvider.cs').read_text()
 print('artwork and replacement source safeguards passed')

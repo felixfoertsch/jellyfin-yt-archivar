@@ -6,7 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.YouTubeArchivar.TubeArchivist;
+using Jellyfin.Plugin.YouTubeArchivar.Server;
 using Jellyfin.Plugin.YouTubeArchivar.Utilities;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 namespace Jellyfin.Plugin.YouTubeArchivar.Providers
 {
     /// <summary>
-    /// Image provider which interacts with TubeArchivist library.
+    /// Image provider for the configured archive library.
     /// </summary>
     public class EpisodeImageProvider : IRemoteImageProvider
     {
@@ -57,18 +57,18 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
         public async Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
         {
             // Jellyfin probes Supports with an unparented item when listing library options.
-            if (!Utils.IsTubeArchivistItem(item))
+            if (!Utils.IsArchiveItem(item))
             {
                 return Array.Empty<RemoteImageInfo>();
             }
 
             var list = new List<RemoteImageInfo>();
-            var taApi = TubeArchivistApi.GetInstance();
-            var videoTAId = Utils.GetVideoNameFromPath(item.Path);
-            var video = await taApi.GetVideo(videoTAId, cancellationToken).ConfigureAwait(true);
+            var serverApi = ServerApi.GetInstance();
+            var videoId = Utils.GetVideoNameFromPath(item.Path);
+            var video = await serverApi.GetVideo(videoId, cancellationToken).ConfigureAwait(true);
             if (_logger.IsEnabled(LogLevel.Debug))
             {
-                _logger.LogDebug("Getting images for video: {Title} ({Id})", video?.Title, videoTAId);
+                _logger.LogDebug("Getting images for video: {Title} ({Id})", video?.Title, videoId);
             }
 
             if (video != null && Utils.HasImageUrl(video.VidThumbUrl))
@@ -77,7 +77,7 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
                 {
                     ProviderName = Name,
                     Type = ImageType.Primary,
-                    Url = taApi.NormalizeImage(video.VidThumbUrl)
+                    Url = serverApi.NormalizeImage(video.VidThumbUrl)
                 });
             }
 
@@ -95,10 +95,10 @@ namespace Jellyfin.Plugin.YouTubeArchivar.Providers
             {
                 if (!Utils.HasImageUrl(url))
                 {
-                    throw new HttpRequestException("TubeArchivist returned an empty image URL.");
+                    throw new HttpRequestException("The server returned an empty image URL.");
                 }
 
-                return await TubeArchivistApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
+                return await ServerApi.GetInstance().GetImage(url, cancellationToken).ConfigureAwait(false);
             }
         }
     }
