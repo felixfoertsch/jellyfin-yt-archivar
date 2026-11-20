@@ -4,17 +4,17 @@
     "guid": "60b0b958-e53f-443d-b4dc-43c950bc75de",
     "name": "YouTube Archivar",
     "description": "YouTube Archivar is a plugin that automatically manages metadata for videos downloaded with YouTube Archivar.\n",
-    "owner": "DarkFighterLuke",
+    "owner": "felixfoertsch",
     "overview": "Metadata for your YouTube Archivar library on Jellyfin",
-    "imageUrl": "https://raw.githubusercontent.com/felixfoertsch/jellyfin-yt-archivar/32781470ed4236916adad5a93250fa84337b1776/images/logo.png",
+    "imageUrl": "https://raw.githubusercontent.com/felixfoertsch/jellyfin-yt-archivar/40b17e8e8f04098f17af080ca85f485eda5df6a4/images/logo.png",
     "versions": [
       {
         "targetAbi": "12.4.0.0",
-        "version": "1.5.0.2092",
-        "sourceUrl": "https://github.com/felixfoertsch/jellyfin-yt-archivar/releases/download/v2026.11.18.2092/jellyfin-yt-archivar.zip",
-        "checksum": "28678397983f9c217f1eaae30c18fb35",
-        "timestamp": "2026-11-18T21:44:03.578834Z",
-        "changelog": "Edge build v2026.11.18.2092 (32781470ed4236916adad5a93250fa84337b1776)"
+        "version": "1.5.0.2121",
+        "sourceUrl": "https://github.com/felixfoertsch/jellyfin-yt-archivar/releases/download/v2026.11.20.2121/jellyfin-yt-archivar.zip",
+        "checksum": "83402e8dd3db633578fe5bdeba94ee21",
+        "timestamp": "2026-11-20T09:57:32.785264Z",
+        "changelog": "Edge build v2026.11.20.2121 (40b17e8e8f04098f17af080ca85f485eda5df6a4)"
       }
     ]
   }
