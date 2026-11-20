@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+#MISE description="Run the current QA check"
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Run the task as published: fast-forward first, then start over once.
+if [ -z "${QA_UPDATED:-}" ]; then
+	if [ -n "$(git status --porcelain)" ]; then
+		echo "Stopped: this checkout has local changes. Commit or stash them, then run again." >&2
+		exit 1
+	fi
+	git fetch --quiet origin
+	if ! git merge --ff-only --quiet '@{upstream}'; then
+		echo "Stopped: this checkout has diverged from its upstream and cannot be fast-forwarded." >&2
+		exit 1
+	fi
+	QA_UPDATED=1 exec "$0" "$@"
+fi
+
+open_url() {
+	if command -v open >/dev/null 2>&1; then
+		open ${QA_APP:+-a "$QA_APP"} "$1"
+	elif command -v xdg-open >/dev/null 2>&1; then
+		xdg-open "$1" >/dev/null 2>&1 &
+	else
+		echo "Open this address yourself: $1" >&2
+	fi
+}
+
+report() {
+	cat <<END
+
+How to report
+
+Open $1 and, in the latest comment, tick every question that is true.
+Write what you saw under any question you leave unticked, then tick "QA done".
+If a check failed, assign ai-architect again.
+END
+}
+
+issue="https://foerge.de/felixfoertsch/jellyfin-yt-archivar/issues/13"
+release="https://foerge.de/felixfoertsch/jellyfin-yt-archivar/releases"
+
+cat <<END
+QA for $issue
+
+What is checked: the rebranded Jellyfin plugin keeps your saved settings.
+Why: the plugin's settings were renamed. A test with an old settings file
+passes, but an upgrade on a real Jellyfin has not been tried.
+
+This changes the plugin on your real Jellyfin server. Nothing else is touched.
+
+Steps
+
+1. The release page opens. In Jellyfin, open Dashboard, Plugins, and update
+   "YouTube Archivar" to the newest version from your plugin repository, then
+   restart Jellyfin.
+   - Does the plugin list show "YouTube Archivar" with the blue archive-box logo?
+
+2. Open the plugin's settings page.
+   - Are the server address and the API key still filled in?
+
+3. Refresh the metadata of one YouTube channel in your library.
+   - Do title, description and artwork load without an error?
+END
+
+open_url "$release"
+report "$issue"
